@@ -9,10 +9,10 @@ const supabase = createClient(
 );
 
 async function upload() {
-  const file = fs.readFileSync('test_audio.m4a');
+  const file = fs.readFileSync('public/test_audio.m4a');
   const { data, error } = await supabase.storage
     .from('episodes_bucket')
-    .upload('test_audio_m4a', file, {
+    .upload('public/test_audio.m4a', file, {
       contentType: 'audio/mp4',
       upsert: true
     });
@@ -20,7 +20,7 @@ async function upload() {
   if (error) {
     console.error('Upload error:', error);
   } else {
-    const { data: publicUrlData } = supabase.storage.from('episodes_bucket').getPublicUrl('test_audio_m4a');
+    const { data: publicUrlData } = supabase.storage.from('episodes_bucket').getPublicUrl('public/test_audio.m4a');
     console.log('Public URL:', publicUrlData.publicUrl);
   }
 }

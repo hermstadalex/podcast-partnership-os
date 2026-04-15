@@ -23,14 +23,17 @@ export class CaptivateService {
   private async authenticate() {
     if (this.token) return;
     
-    // According to captivate API, we authenticate using username (userId) and token (apiKey)
-    const res = await fetch(`\${this.baseUrl}/authenticate/token`, {
+    // Captivate API requires form-data for auth at the root endpoint (not v2)
+    const formData = new URLSearchParams();
+    formData.append('username', this.userId);
+    formData.append('token', this.apiKey);
+
+    const res = await fetch(`https://api.captivate.fm/authenticate/token`, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        username: this.userId,
-        token: this.apiKey
-      })
+      headers: {
+        'Content-Type': 'application/x-www-form-urlencoded',
+      },
+      body: formData.toString()
     });
     
     if (!res.ok) {
@@ -42,17 +45,17 @@ export class CaptivateService {
 
   private async fetchApi(endpoint: string, options: RequestInit = {}) {
     await this.authenticate();
-    const res = await fetch(`\${this.baseUrl}\${endpoint}`, {
+    const res = await fetch(`${this.baseUrl}${endpoint}`, {
       ...options,
       headers: {
-        'Authorization': `Bearer \${this.token}`,
+        'Authorization': `Bearer ${this.token}`,
         'Content-Type': 'application/json',
         ...options.headers,
       },
     });
 
     if (!res.ok) {
-      throw new Error(`Captivate API error: \${res.statusText}`);
+      throw new Error(`Captivate API error: ${res.statusText}`);
     }
 
     return res.json();
@@ -63,26 +66,45 @@ export class CaptivateService {
   }
 
   async getShowMetadata(id: string) {
-    return this.fetchApi(`/shows/\${id}`);
+    return this.fetchApi(`/shows/${id}`);
   }
 
   async updateShowMetadata(id: string, data: Partial<ShowMetadata>) {
-    return this.fetchApi(`/shows/\${id}`, {
+    return this.fetchApi(`/shows/${id}`, {
       method: 'PUT',
       body: JSON.stringify(data)
     });
   }
 
   async createEpisode(showId: string, data: { title: string, description: string, mediaUrl: string }) {
-    return this.fetchApi(`/shows/\${showId}/episodes`, {
+    await this.authenticate();
+    
+    const formData = new FormData();
+    formData.append('shows_id', showId);
+    formData.append('title', data.title);
+    formData.append('shownotes', data.description);
+    formData.append('media_id', ''); // Usually expected but optional for Drafts depending on config
+    formData.append('status', 'Draft');
+    formData.append('episode_type', 'full');
+    
+    // According to docs, POST /episodes takes FormData, not JSON.
+    // The V2 base URL cannot be used here because the episode endpoint is in the root path.
+    const rootUrl = this.baseUrl.replace('/v2', '');
+    const res = await fetch(`${rootUrl}/episodes`, {
       method: 'POST',
-      body: JSON.stringify({
-        title: data.title,
-        shownotes: data.description,
-        media_url: data.mediaUrl,
-        status: 'Draft' // Assume draft by default based on MVP description "staging area"
-      })
+      headers: {
+        'Authorization': `Bearer ${this.token}`,
+        // Note: Do NOT set Content-Type header manually when using FormData, 
+        // the browser/fetch automatically sets it with the proper boundary!
+      },
+      body: formData
     });
+
+    if (!res.ok) {
+      throw new Error(`Captivate API error: ${res.statusText}`);
+    }
+
+    return res.json();
   }
 }
 

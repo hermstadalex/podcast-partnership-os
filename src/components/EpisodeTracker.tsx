@@ -10,8 +10,8 @@ type EpisodeTrackerProps = {
 const STEPS = [
   { id: 'recording', label: 'Recording', icon: PlayCircle },
   { id: 'editing', label: 'Editing', icon: Loader2 },
-  { id: 'captivate', label: 'Captivate Live', icon: UploadCloud },
-  { id: 'zernio', label: 'Zernio Processing', icon: Video },
+  { id: 'captivate', label: 'Podcast Published', icon: UploadCloud },
+  { id: 'zernio', label: 'Video Processing', icon: Video },
   { id: 'published', label: 'YouTube Published', icon: CheckCircle2 },
 ];
 

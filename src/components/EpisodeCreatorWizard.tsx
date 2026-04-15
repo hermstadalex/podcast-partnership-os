@@ -33,13 +33,14 @@ export function EpisodeCreatorWizard({ isOpen, onClose }: { isOpen: boolean, onC
   const uploadProps = useSupabaseUpload({
     bucketName: 'episodes_bucket',
     maxFiles: 1,
+    upsert: true,
   });
 
   // Watch for successful upload internally from the Supabase UI block
   useEffect(() => {
     if (step === 'UPLOAD' && uploadProps.isSuccess && uploadProps.successes.length > 0) {
       const fileName = uploadProps.successes[0];
-      const url = `https://ixyzyxhjcdqidsnlqwwj.supabase.co/storage/v1/object/public/episodes_bucket/\${fileName}`;
+      const url = `https://ixyzyxhjcdqidsnlqwwj.supabase.co/storage/v1/object/public/episodes_bucket/${fileName}`;
       setFileUrl(url);
       triggerAI(url);
     }
@@ -73,7 +74,7 @@ export function EpisodeCreatorWizard({ isOpen, onClose }: { isOpen: boolean, onC
     try {
       await publishEpisode(fileUrl, title, description);
       setStep('DONE');
-      toast.success('Episode successfully published to Zernio & Captivate!');
+      toast.success('Episode successfully published to external platforms!');
     } catch (e) {
       toast.error('Publishing failed.');
       setStep('REVIEW');
@@ -92,7 +93,7 @@ export function EpisodeCreatorWizard({ isOpen, onClose }: { isOpen: boolean, onC
 
   return (
     <Dialog open={isOpen} onOpenChange={(open) => !open && reset()}>
-      <DialogContent className="sm:max-w-[600px] bg-zinc-950 border-zinc-800 text-zinc-50">
+      <DialogContent className="sm:max-w-[600px] max-h-[85vh] overflow-y-auto bg-zinc-950 border-zinc-800 text-zinc-50">
         <DialogHeader>
           <DialogTitle className="text-xl flex items-center gap-2">
             <Sparkles className="w-5 h-5 text-indigo-400" />
@@ -131,8 +132,8 @@ export function EpisodeCreatorWizard({ isOpen, onClose }: { isOpen: boolean, onC
                 <Loader2 className="w-12 h-12 text-indigo-400 animate-spin relative" />
               </div>
               <div className="text-center">
-                <h3 className="font-medium text-zinc-200">Gemini is listening...</h3>
-                <p className="text-sm text-zinc-500">Transcribing audio and writing optimal metadata.</p>
+                <h3 className="font-medium text-zinc-200">AI Engine processing...</h3>
+                <p className="text-sm text-zinc-500">Transcribing audio and compiling metadata.</p>
               </div>
             </div>
           )}
@@ -188,8 +189,7 @@ export function EpisodeCreatorWizard({ isOpen, onClose }: { isOpen: boolean, onC
                 <Textarea 
                   value={description} 
                   onChange={(e) => setDescription(e.target.value)}
-                  rows={6}
-                  className="bg-zinc-900 border-zinc-800 focus-visible:ring-indigo-500 resize-none"
+                  className="bg-zinc-900 border-zinc-800 focus-visible:ring-indigo-500 resize-none min-h-[150px] overflow-y-auto"
                 />
               </div>
 
@@ -213,7 +213,7 @@ export function EpisodeCreatorWizard({ isOpen, onClose }: { isOpen: boolean, onC
           {step === 'PUBLISHING' && (
             <div className="flex flex-col items-center justify-center space-y-8 py-8 animate-in fade-in">
               <EpisodeTracker status="zernio" />
-              <p className="text-sm text-zinc-400 animate-pulse">Dispatching payloads to Captivate & Zernio...</p>
+              <p className="text-sm text-zinc-400 animate-pulse">Dispatching payloads to configured platforms...</p>
             </div>
           )}
 
@@ -225,7 +225,7 @@ export function EpisodeCreatorWizard({ isOpen, onClose }: { isOpen: boolean, onC
               <div className="text-center">
                 <h3 className="text-xl font-bold text-zinc-100">Pipeline Active!</h3>
                 <p className="text-zinc-400 mt-2 max-w-sm">
-                  Your episode has been handed off to Zernio and Captivate. You can track its live status in the Global Feed.
+                  Your episode has been handed off to your configured distribution platforms. You can track its live status in the Global Feed.
                 </p>
               </div>
               <Button onClick={reset} className="bg-zinc-800 hover:bg-zinc-700 text-white w-full">

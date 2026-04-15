@@ -2,7 +2,7 @@
 
 import { useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
-import { getShows } from '@/app/actions';
+import { getEpisodes } from '@/app/actions';
 import { PodcastProfileEditor } from '@/components/PodcastProfileEditor';
 import { EpisodeCreatorWizard } from '@/components/EpisodeCreatorWizard';
 import { Input } from '@/components/ui/input';
@@ -22,14 +22,15 @@ export default function DashboardPage() {
   const [selectedShow, setSelectedShow] = useState<string | null>(null);
   const [isWizardOpen, setIsWizardOpen] = useState(false);
 
-  const { data: captivateData, isLoading } = useQuery({
-    queryKey: ['shows'],
-    queryFn: () => getShows(),
+  const { data: feedData, isLoading } = useQuery({
+    queryKey: ['episodes_feed'],
+    queryFn: () => getEpisodes(),
+    refetchInterval: 5000, // Poll every 5s for live pipeline updates
   });
 
-  const shows = captivateData?.shows || [];
-  const filteredShows = shows.filter((show: any) => 
-    show.title.toLowerCase().includes(searchQuery.toLowerCase())
+  const episodes = feedData?.episodes || [];
+  const filteredEpisodes = episodes.filter((ep: any) => 
+    ep.title.toLowerCase().includes(searchQuery.toLowerCase())
   );
 
   return (
@@ -61,8 +62,8 @@ export default function DashboardPage() {
         <Table>
           <TableHeader className="bg-zinc-900/50">
             <TableRow className="border-zinc-800 hover:bg-transparent">
-              <TableHead className="text-zinc-400 font-medium">Show Title</TableHead>
-              <TableHead className="text-zinc-400 font-medium">ID</TableHead>
+              <TableHead className="text-zinc-400 font-medium">Episode Title</TableHead>
+              <TableHead className="text-zinc-400 font-medium">Created</TableHead>
               <TableHead className="text-zinc-400 font-medium">Pipeline Status</TableHead>
               <TableHead className="text-right text-zinc-400 font-medium">Action</TableHead>
             </TableRow>
@@ -74,28 +75,25 @@ export default function DashboardPage() {
                   <Loader2 className="h-6 w-6 animate-spin mx-auto text-zinc-500" />
                 </TableCell>
               </TableRow>
-            ) : filteredShows.length === 0 ? (
+            ) : filteredEpisodes.length === 0 ? (
               <TableRow className="border-zinc-800">
                 <TableCell colSpan={4} className="h-24 text-center text-zinc-500">
-                  No shows found.
+                  No episodes found.
                 </TableCell>
               </TableRow>
             ) : (
-              filteredShows.map((show: any) => (
-                <TableRow key={show.id} className="border-zinc-800 hover:bg-zinc-800/50 transition-colors cursor-pointer" onClick={() => setSelectedShow(show.id)}>
+              filteredEpisodes.map((ep: any) => (
+                <TableRow key={ep.id} className="border-zinc-800 hover:bg-zinc-800/50 transition-colors cursor-pointer" onClick={() => setSelectedShow(ep.id)}>
                   <TableCell className="font-medium text-zinc-200">
-                    <div className="flex items-center gap-3">
-                      <div className="h-8 w-8 rounded bg-zinc-800 overflow-hidden">
-                        {/* eslint-disable-next-line @next/next/no-img-element */}
-                        <img src={show.image} alt={show.title} className="h-full w-full object-cover" />
-                      </div>
-                      {show.title}
-                    </div>
+                    {ep.title}
                   </TableCell>
-                  <TableCell className="text-zinc-500 font-mono text-xs">{show.id}</TableCell>
+                  <TableCell className="text-zinc-500 font-mono text-xs">{new Date(ep.created_at).toLocaleDateString()}</TableCell>
                   <TableCell>
-                    <div className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">
-                      Processing
+                    <div className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium 
+                      ${ep.status === 'Published' ? 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/20' : 
+                        ep.status === 'Failed' ? 'bg-red-500/10 text-red-400 border border-red-500/20' : 
+                        'bg-amber-500/10 text-amber-400 border border-amber-500/20'}`}>
+                      {ep.status}
                     </div>
                   </TableCell>
                   <TableCell className="text-right">
