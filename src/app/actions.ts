@@ -208,7 +208,13 @@ export async function publishEpisode(mediaUrl: string, title: string, descriptio
          console.warn("Zernio Error:", await zernioRes.text());
          hasError = true;
       } else {
-         console.log(`[PIPELINE] Dispatched to Zernio YouTube Account: ${youtubeAccountId}`);
+         const zernioData = await zernioRes.json();
+         // The Zernio API returns the post ID nested inside 'post' with an underscore prefix '_id'
+         const zernioPostId = zernioData.post?._id || zernioData._id; 
+         console.log(`[PIPELINE] Dispatched to Zernio YouTube Account: ${youtubeAccountId}. Post ID: ${zernioPostId}`);
+         if (episodeId && zernioPostId) {
+            await supabase.from('episodes_feed').update({ zernio_post_id: zernioPostId }).eq('id', episodeId);
+         }
       }
     } else {
       console.warn("Missing ZERNIO_API_KEY or ZERNIO_YOUTUBE_ACCOUNT_ID for Video Host submission.");
@@ -218,10 +224,11 @@ export async function publishEpisode(mediaUrl: string, title: string, descriptio
     // Simulate network delay to demonstrate the UI loading state
     await new Promise(resolve => setTimeout(resolve, 2000));
     
-    if (episodeId) {
-       const finalStatus = hasError ? 'Failed' : 'Published';
-       await supabase.from('episodes_feed').update({ status: finalStatus }).eq('id', episodeId);
+    if (episodeId && hasError) {
+       await supabase.from('episodes_feed').update({ status: 'Failed' }).eq('id', episodeId);
     }
+    // Note: We do NOT natively update the status to 'Published' here anymore. 
+    // The pipeline will remain in 'Processing' until the Zernio Webhook endpoint confirms completion.
 
     return true;
   } catch (error) {
