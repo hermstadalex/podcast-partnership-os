@@ -16,11 +16,12 @@ import {
 import { Loader2, Sparkles, Wand2 } from 'lucide-react';
 import { toast } from 'sonner';
 import { EpisodeTracker } from './EpisodeTracker';
-import { generateEpisodeAssets, generateVisualAssets, publishEpisode } from '@/app/actions';
+import { generateEpisodeAssets, generateVisualAssets, publishEpisode, getShows } from '@/app/actions';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 
 type WizardStep = 'UPLOAD' | 'GENERATING' | 'REVIEW' | 'PUBLISHING' | 'DONE';
 
-export function EpisodeCreatorWizard({ isOpen, onClose }: { isOpen: boolean, onClose: () => void }) {
+export function EpisodeCreatorWizard({ isOpen, onClose, showId }: { isOpen: boolean, onClose: () => void, showId?: string }) {
   const [step, setStep] = useState<WizardStep>('UPLOAD');
   
   // State Payloads
@@ -29,6 +30,19 @@ export function EpisodeCreatorWizard({ isOpen, onClose }: { isOpen: boolean, onC
   const [description, setDescription] = useState('');
   const [thumbUrl, setThumbUrl] = useState('');
   const [artUrl, setArtUrl] = useState('');
+
+  // Show Selection State
+  const [shows, setShows] = useState<any[]>([]);
+  const [effectiveShowId, setEffectiveShowId] = useState<string | undefined>(showId);
+
+  useEffect(() => {
+    if (isOpen) {
+      setEffectiveShowId(showId);
+      if (!showId) {
+        getShows().then(setShows).catch(console.error);
+      }
+    }
+  }, [isOpen, showId]);
 
   const uploadProps = useSupabaseUpload({
     bucketName: 'episodes_bucket',
@@ -70,9 +84,13 @@ export function EpisodeCreatorWizard({ isOpen, onClose }: { isOpen: boolean, onC
   };
 
   const handlePublish = async () => {
+    if (!effectiveShowId) {
+      toast.error('Please select a target show first.');
+      return;
+    }
     setStep('PUBLISHING');
     try {
-      await publishEpisode(fileUrl, title, description);
+      await publishEpisode(fileUrl, title, description, effectiveShowId);
       setStep('DONE');
       toast.success('Episode successfully published to external platforms!');
     } catch (e) {
@@ -88,6 +106,7 @@ export function EpisodeCreatorWizard({ isOpen, onClose }: { isOpen: boolean, onC
     setDescription('');
     uploadProps.setFiles([]);
     uploadProps.setErrors([]);
+    setEffectiveShowId(showId);
     onClose();
   };
 
@@ -108,6 +127,23 @@ export function EpisodeCreatorWizard({ isOpen, onClose }: { isOpen: boolean, onC
           
           {step === 'UPLOAD' && (
             <div className="space-y-4">
+              {!showId && (
+                <div className="space-y-2 mb-4">
+                  <label className="text-sm font-medium text-zinc-300">Target Show <span className="text-red-400">*</span></label>
+                  <Select value={effectiveShowId} onValueChange={setEffectiveShowId}>
+                    <SelectTrigger className="w-full bg-zinc-900 border-zinc-800 focus:ring-indigo-500">
+                      <SelectValue placeholder="Select a show to publish to" />
+                    </SelectTrigger>
+                    <SelectContent className="bg-zinc-900 border-zinc-800 text-zinc-200 focus:bg-zinc-800">
+                      {shows.map((show) => (
+                        <SelectItem key={show.id} value={show.id} className="cursor-pointer">
+                          {show.title || show.captivate_show_id}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+              )}
               <Dropzone {...uploadProps} className="border-zinc-800 bg-zinc-900/50">
                 <DropzoneEmptyState />
                 <DropzoneContent />

@@ -17,19 +17,27 @@ import {
 import { Search, Loader2, Wand2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 
+type EpisodeFeedEntry = {
+  id: string;
+  title: string;
+  created_at: string;
+  status: string;
+  show_id: string;
+};
+
 export default function DashboardPage() {
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedShow, setSelectedShow] = useState<string | null>(null);
   const [isWizardOpen, setIsWizardOpen] = useState(false);
 
   const { data: feedData, isLoading } = useQuery({
-    queryKey: ['episodes_feed'],
+    queryKey: ['episodes'],
     queryFn: () => getEpisodes(),
     refetchInterval: 5000, // Poll every 5s for live pipeline updates
   });
 
-  const episodes = feedData?.episodes || [];
-  const filteredEpisodes = episodes.filter((ep: any) => 
+  const episodes = (feedData?.episodes || []) as EpisodeFeedEntry[];
+  const filteredEpisodes = episodes.filter((ep) =>
     ep.title.toLowerCase().includes(searchQuery.toLowerCase())
   );
 
@@ -82,8 +90,8 @@ export default function DashboardPage() {
                 </TableCell>
               </TableRow>
             ) : (
-              filteredEpisodes.map((ep: any) => (
-                <TableRow key={ep.id} className="border-zinc-800 hover:bg-zinc-800/50 transition-colors cursor-pointer" onClick={() => setSelectedShow(ep.id)}>
+              filteredEpisodes.map((ep) => (
+                <TableRow key={ep.id} className="border-zinc-800 hover:bg-zinc-800/50 transition-colors cursor-pointer" onClick={() => setSelectedShow(ep.show_id)}>
                   <TableCell className="font-medium text-zinc-200">
                     {ep.title}
                   </TableCell>

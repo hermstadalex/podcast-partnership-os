@@ -1,6 +1,8 @@
 import { createServerClient } from '@supabase/ssr'
 import { NextResponse, type NextRequest } from 'next/server'
 
+import { E2E_ADMIN_EMAIL, getE2ERole } from '@/lib/e2e-auth'
+
 export async function updateSession(request: NextRequest) {
   let supabaseResponse = NextResponse.next({
     request,
@@ -37,16 +39,37 @@ export async function updateSession(request: NextRequest) {
   // with the Supabase client, your users may be randomly logged out.
   const { data } = await supabase.auth.getClaims()
   const user = data?.claims
+  const e2eRole = getE2ERole(request.cookies)
+  const effectiveEmail = user?.email || (e2eRole === 'admin' ? E2E_ADMIN_EMAIL : '')
+  const hasAuthenticatedAccess = !!user || e2eRole === 'admin'
+  const isApiRoute = request.nextUrl.pathname.startsWith('/api/')
+
+  if (isApiRoute) {
+    return supabaseResponse
+  }
 
   if (
-    !user &&
+    !hasAuthenticatedAccess &&
     !request.nextUrl.pathname.startsWith('/login') &&
     !request.nextUrl.pathname.startsWith('/auth')
   ) {
-    // no user, potentially respond by redirecting the user to the login page
-    // const url = request.nextUrl.clone()
-    // url.pathname = '/auth/login'
-    // return NextResponse.redirect(url)
+    // no user, redirect to auth
+    const url = request.nextUrl.clone()
+    url.pathname = '/auth/login'
+    return NextResponse.redirect(url)
+  }
+
+  if (hasAuthenticatedAccess) {
+    const isAdmin = effectiveEmail === E2E_ADMIN_EMAIL;
+    const isPortalRoute = request.nextUrl.pathname.startsWith('/portal');
+    const isAuthRoute = request.nextUrl.pathname.startsWith('/login') || request.nextUrl.pathname.startsWith('/auth');
+
+    if (!isAdmin && !isPortalRoute && !isAuthRoute) {
+      // Client shouldn't access /shows, /, etc.
+      const url = request.nextUrl.clone();
+      url.pathname = '/portal';
+      return NextResponse.redirect(url);
+    }
   }
 
   // IMPORTANT: You *must* return the supabaseResponse object as it is.
