@@ -86,8 +86,9 @@ export async function POST(req: Request) {
       
       // If the API returns base64 response for an image, or image url depending on schema
       // Since it's a multimodal generation model, it may return inline data.
-      if (genResponse.candidates && genResponse.candidates[0].content.parts.length > 0) {
-        const part = genResponse.candidates[0].content.parts[0];
+      const parts = genResponse.candidates?.[0]?.content?.parts;
+      if (parts && parts.length > 0) {
+        const part = parts[0];
         if (part.inlineData) {
             outputUrl = `data:${part.inlineData.mimeType};base64,${part.inlineData.data}`;
         } else if (part.text) {
