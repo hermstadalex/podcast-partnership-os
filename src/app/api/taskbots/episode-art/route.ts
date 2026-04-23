@@ -106,11 +106,11 @@ export async function POST(req: Request) {
         // Optional SDK parameters usually might have an image field for editing
       });
       
-      if (imageResponse.generatedImages && imageResponse.generatedImages.length > 0) {
+      if (imageResponse?.generatedImages && imageResponse.generatedImages.length > 0) {
          const generatedImg = imageResponse.generatedImages[0];
-         if (generatedImg.image.imageBytes) {
-           outputUrl = `data:${generatedImg.image.mimeType || 'image/jpeg'};base64,${generatedImg.image.imageBytes}`;
-         } else if (generatedImg.imageUri) {
+         if (generatedImg?.image?.imageBytes) {
+           outputUrl = `data:${generatedImg?.image?.mimeType || 'image/jpeg'};base64,${generatedImg?.image?.imageBytes}`;
+         } else if (generatedImg?.imageUri) {
            outputUrl = generatedImg.imageUri;
          }
       }
