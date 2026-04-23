@@ -110,8 +110,8 @@ export async function POST(req: Request) {
          const generatedImg = imageResponse.generatedImages[0];
          if (generatedImg?.image?.imageBytes) {
            outputUrl = `data:${generatedImg?.image?.mimeType || 'image/jpeg'};base64,${generatedImg?.image?.imageBytes}`;
-         } else if (generatedImg?.imageUri) {
-           outputUrl = generatedImg.imageUri;
+         } else if ((generatedImg as any)?.imageUri) {
+           outputUrl = (generatedImg as any).imageUri;
          }
       }
     }
