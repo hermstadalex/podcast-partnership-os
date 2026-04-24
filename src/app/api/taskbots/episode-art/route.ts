@@ -2,6 +2,9 @@ import { NextResponse } from 'next/server';
 import { GoogleGenAI } from '@google/genai';
 import { createClient } from '@/lib/supabase/server';
 
+export const maxDuration = 60; // Extend Vercel timeout to 60s for heavy AI image inference
+
+
 export async function POST(req: Request) {
   try {
     const { showId, title, format } = await req.json();
