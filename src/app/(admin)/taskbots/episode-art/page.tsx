@@ -9,13 +9,15 @@ export const metadata = {
 export default async function EpisodeArtBotPage({
   searchParams,
 }: {
-  searchParams: { episodeId?: string; autoRun?: string };
+  searchParams: Promise<{ episodeId?: string; autoRun?: string }>;
 }) {
   const showsResponse = await getShows();
   let draft = null;
   
-  if (searchParams?.episodeId) {
-    draft = await getEpisodeDraft(searchParams.episodeId);
+  const resolvedParams = await searchParams;
+
+  if (resolvedParams?.episodeId) {
+    draft = await getEpisodeDraft(resolvedParams.episodeId);
   }
 
   // Ensure we safely map the show data
@@ -54,7 +56,7 @@ export default async function EpisodeArtBotPage({
             </p>
           </div>
 
-          <EpisodeArtForm shows={formattedShows} initialDraft={draft} autoRun={searchParams?.autoRun === 'true'} />
+          <EpisodeArtForm shows={formattedShows} initialDraft={draft} autoRun={resolvedParams?.autoRun === 'true'} />
 
         </div>
       </div>
