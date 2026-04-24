@@ -20,7 +20,7 @@ export async function GET(request: Request) {
             width: '100%',
             height: '100%',
             backgroundColor: '#111',
-            backgroundImage: bg ? `url(${bg})` : 'none',
+            backgroundImage: bg ? `url(\${bg})` : 'none',
             backgroundSize: 'cover',
             backgroundPosition: 'center',
             alignItems: 'center',
@@ -70,7 +70,7 @@ export async function GET(request: Request) {
       }
     );
   } catch (e: any) {
-    return new Response(`Failed to generate image: ${e.message}`, {
+    return new Response(`Failed to generate image: \${e.message}`, {
       status: 500,
     });
   }
