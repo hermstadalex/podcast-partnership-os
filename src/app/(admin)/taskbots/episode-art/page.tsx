@@ -1,4 +1,4 @@
-import { getShows } from '@/app/actions';
+import { getShows, getEpisodeDraft } from '@/app/actions';
 import { EpisodeArtForm } from '@/components/taskbots/EpisodeArtForm';
 import { Bot, Paintbrush } from 'lucide-react';
 
@@ -6,8 +6,18 @@ export const metadata = {
   title: 'EpisodeArtBot | Taskbots | Podcast Partnership OS',
 };
 
-export default async function EpisodeArtBotPage() {
+export default async function EpisodeArtBotPage({
+  searchParams,
+}: {
+  searchParams: { episodeId?: string; autoRun?: string };
+}) {
   const showsResponse = await getShows();
+  let draft = null;
+  
+  if (searchParams?.episodeId) {
+    draft = await getEpisodeDraft(searchParams.episodeId);
+  }
+
   // Ensure we safely map the show data
   const formattedShows = showsResponse.map((show: any) => ({
     id: show.id,
@@ -44,7 +54,7 @@ export default async function EpisodeArtBotPage() {
             </p>
           </div>
 
-          <EpisodeArtForm shows={formattedShows} />
+          <EpisodeArtForm shows={formattedShows} initialDraft={draft} autoRun={searchParams?.autoRun === 'true'} />
 
         </div>
       </div>

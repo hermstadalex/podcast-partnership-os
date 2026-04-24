@@ -16,8 +16,9 @@ import {
 import { Loader2, Sparkles, Wand2 } from 'lucide-react';
 import { toast } from 'sonner';
 import { EpisodeTracker } from './EpisodeTracker';
-import { generateEpisodeAssets, generateVisualAssets, publishEpisode, getShows } from '@/app/actions';
+import { generateEpisodeAssets, saveEpisodeDraft, getShows } from '@/app/actions';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { useRouter } from 'next/navigation';
 
 type WizardStep = 'UPLOAD' | 'GENERATING' | 'REVIEW' | 'PUBLISHING' | 'DONE';
 
@@ -28,8 +29,8 @@ export function EpisodeCreatorWizard({ isOpen, onClose, showId }: { isOpen: bool
   const [fileUrl, setFileUrl] = useState<string>('');
   const [title, setTitle] = useState('');
   const [description, setDescription] = useState('');
-  const [thumbUrl, setThumbUrl] = useState('');
-  const [artUrl, setArtUrl] = useState('');
+  
+  const router = useRouter();
 
   // Show Selection State
   const [shows, setShows] = useState<any[]>([]);
@@ -67,34 +68,28 @@ export function EpisodeCreatorWizard({ isOpen, onClose, showId }: { isOpen: bool
       const { aiTitle, aiDescription } = await generateEpisodeAssets(url);
       setTitle(aiTitle);
       setDescription(aiDescription);
-      
-      const { podcastArtUrl, youtubeThumbUrl } = await generateVisualAssets(aiTitle, aiDescription);
-      setThumbUrl(youtubeThumbUrl);
-      setArtUrl(podcastArtUrl);
-
       setStep('REVIEW');
     } catch (e) {
       toast.error('AI Generation failed. You can set them manually.');
       setTitle('');
       setDescription('');
-      setThumbUrl('');
-      setArtUrl('');
       setStep('REVIEW');
     }
   };
 
-  const handlePublish = async () => {
+  const handleSaveDraft = async () => {
     if (!effectiveShowId) {
       toast.error('Please select a target show first.');
       return;
     }
     setStep('PUBLISHING');
     try {
-      await publishEpisode(fileUrl, title, description, effectiveShowId);
-      setStep('DONE');
-      toast.success('Episode successfully published to external platforms!');
+      const episodeId = await saveEpisodeDraft(fileUrl, title, description, effectiveShowId);
+      toast.success('Metadata approved! Proceeding to Visuals...');
+      onClose(); // Hide wizard dialog 
+      router.push(`/taskbots/episode-art?episodeId=${episodeId}&autoRun=true`);
     } catch (e) {
-      toast.error('Publishing failed.');
+      toast.error('Pipeline routing failed.');
       setStep('REVIEW');
     }
   };
@@ -176,39 +171,6 @@ export function EpisodeCreatorWizard({ isOpen, onClose, showId }: { isOpen: bool
 
           {step === 'REVIEW' && (
             <div className="space-y-6 animate-in fade-in zoom-in duration-300">
-              
-              <div className="grid grid-cols-2 gap-4">
-                <div className="space-y-2">
-                  <label className="text-sm font-medium text-zinc-300">YouTube Thumbnail (16:9)</label>
-                  <div className="w-full aspect-video bg-zinc-900 border border-zinc-800 rounded-md overflow-hidden relative group">
-                    {thumbUrl ? (
-                      /* eslint-disable-next-line @next/next/no-img-element */
-                      <img src={thumbUrl} alt="Generated Thumbnail" className="w-full h-full object-cover" />
-                    ) : (
-                      <div className="w-full h-full flex flex-col items-center justify-center text-zinc-500">
-                        <Wand2 className="w-6 h-6 mb-2 opacity-50" />
-                        <span className="text-xs">No image</span>
-                      </div>
-                    )}
-                  </div>
-                </div>
-                
-                <div className="space-y-2">
-                  <label className="text-sm font-medium text-zinc-300">Podcast Art (1:1)</label>
-                  <div className="w-full aspect-square max-h-[150px] bg-zinc-900 border border-zinc-800 rounded-md overflow-hidden relative group">
-                     {artUrl ? (
-                      /* eslint-disable-next-line @next/next/no-img-element */
-                      <img src={artUrl} alt="Generated Art" className="w-full h-full object-cover" />
-                    ) : (
-                      <div className="w-full h-full flex flex-col items-center justify-center text-zinc-500">
-                        <Wand2 className="w-6 h-6 mb-2 opacity-50" />
-                        <span className="text-xs">No image</span>
-                      </div>
-                    )}
-                  </div>
-                </div>
-              </div>
-
               <div className="space-y-2">
                 <div className="flex items-center justify-between">
                   <label className="text-sm font-medium text-zinc-300">AI Suggested Title</label>
@@ -239,8 +201,8 @@ export function EpisodeCreatorWizard({ isOpen, onClose, showId }: { isOpen: bool
                     Delete & Cancel
                   </Button>
                 </div>
-                <Button onClick={handlePublish} className="bg-indigo-600 hover:bg-indigo-700 text-white shadow-lg shadow-indigo-500/20">
-                  Approve & Publish Pipeline
+                <Button onClick={handleSaveDraft} className="bg-indigo-600 hover:bg-indigo-700 text-white shadow-lg shadow-indigo-500/20">
+                  Approve & Proceed to Phase 2
                 </Button>
               </div>
             </div>

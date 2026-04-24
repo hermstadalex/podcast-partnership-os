@@ -388,7 +388,7 @@ The image should have a cinematic look to stand out in the algorithm. Create it 
   return { podcastArtUrl, youtubeThumbUrl };
 }
 
-export async function publishEpisode(mediaUrl: string, title: string, description: string, showId?: string) {
+export async function saveEpisodeDraft(mediaUrl: string, title: string, description: string, showId?: string) {
   const supabase = await createClient();
   const { data: authData } = await supabase.auth.getUser();
   const user = authData.user;
@@ -398,11 +398,6 @@ export async function publishEpisode(mediaUrl: string, title: string, descriptio
   }
 
   const targetShow = await resolveAuthorizedShow(supabase, user, showId);
-  const destinationAccount = await getDefaultDestinationAccount(supabase, targetShow.id);
-
-  if (!destinationAccount?.external_account_id) {
-    throw new Error('No publish destination is configured for this show.');
-  }
 
   const { data: episodeInsert, error: episodeInsertError } = await supabase
     .from('episodes')
@@ -419,18 +414,52 @@ export async function publishEpisode(mediaUrl: string, title: string, descriptio
     throw new Error(`Failed to create episode record: ${episodeInsertError.message}`);
   }
 
-  const episodeId = episodeInsert.id as string;
-  const captivatePayload = { title, description, mediaUrl };
+  return episodeInsert.id as string;
+}
+
+export async function dispatchEpisodePublish(episodeId: string) {
+  const supabase = await createClient();
+  const { data: authData } = await supabase.auth.getUser();
+  const user = authData.user;
+
+  if (!user) {
+    throw new Error('Unauthorized');
+  }
+
+  const { data: episode, error: episodeError } = await supabase
+    .from('episodes')
+    .select('*')
+    .eq('id', episodeId)
+    .single();
+
+  if (episodeError || !episode) {
+    throw new Error('Episode draft not found.');
+  }
+
+  const targetShow = await resolveAuthorizedShow(supabase, user, episode.show_id);
+  const destinationAccount = await getDefaultDestinationAccount(supabase, targetShow.id);
+
+  if (!destinationAccount?.external_account_id) {
+    throw new Error('No publish destination is configured for this show.');
+  }
+
+  const captivatePayload = { 
+    title: episode.title, 
+    description: episode.description, 
+    mediaUrl: episode.media_url,
+    // Add logic to pass episode art url if we saved it to episode table? Captivate api doesn't directly consume it right now in snippet.
+  };
+  
   const zernioPayload = {
-    content: description,
-    mediaItems: [{ type: 'video', url: mediaUrl }],
+    content: episode.description,
+    mediaItems: [{ type: 'video', url: episode.media_url }],
     publishNow: true,
     platforms: [
       {
         platform: destinationAccount.platform || 'youtube',
         accountId: process.env.ZERNIO_YOUTUBE_ACCOUNT_ID || destinationAccount.external_account_id,
         platformSpecificData: {
-          title,
+          title: episode.title,
           visibility: 'private',
         },
       },
@@ -564,4 +593,14 @@ export async function getEpisodes() {
   });
 
   return { episodes };
+}
+
+export async function getEpisodeDraft(episodeId: string) {
+  const supabase = await createClient();
+  const { data: episode } = await supabase
+    .from('episodes')
+    .select('*')
+    .eq('id', episodeId)
+    .single();
+  return episode;
 }
