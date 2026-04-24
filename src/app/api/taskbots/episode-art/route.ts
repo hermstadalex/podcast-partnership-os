@@ -60,53 +60,20 @@ export async function POST(req: Request) {
     
     // Process image to base64
     const imageArrayBuffer = await imageRes.arrayBuffer();
-    const imageBase64 = Buffer.from(imageArrayBuffer).toString('base64');
-    const mimeType = imageRes.headers.get('content-type') || 'image/jpeg';
-
-    const prompt = `Edit the first image (base template) only. Keep the background, colors, layout, and typography the same as the first image. Replace the existing text with this new title: ${title}. Center the new text horizontally and vertically in the same text area. Be sure to keep the font uniform in size. Be sure to maintain the same case as the provided title. If the title is all capitalized, carry that over. If it's not all capitalized, carry that over. Match the font weight as well. ENSURE the text is centered, vertically and horizontally. Return only a high-quality JPEG image.`;
+    const newPrompt = `Create a spectacular ${format === 'youtube-thumbnail' ? '16:9 landscape YouTube thumbnail' : '1:1 square Podcast cover art'} featuring the EXACT title: "${title}". Use high-quality, cinematic lighting, modern typography, and a premium aesthetic that perfectly captures the theme.`;
 
     const ai = new GoogleGenAI({ apiKey });
-
-    // Using the Nano Banana 2 API (gemini-3.1-flash-image-preview) as researched.
-    // The google/genai SDK provides an interface for standard image models. If it's an image edit via generateImages:
     let outputUrl = '';
     
     try {
-      // Trying generateContent for multimodal text/image to image
-      // Note: If this model returns image payload base64 or URI, we parse it.
-      const genResponse = await ai.models.generateContent({
-        model: 'gemini-3.1-flash-image-preview',
-        contents: [
-          {
-            role: 'user',
-            parts: [
-              { inlineData: { data: imageBase64, mimeType } },
-              { text: prompt },
-            ]
-          }
-        ]
-      });
-      
-      // If the API returns base64 response for an image, or image url depending on schema
-      // Since it's a multimodal generation model, it may return inline data.
-      const parts = genResponse.candidates?.[0]?.content?.parts;
-      if (parts && parts.length > 0) {
-        const part = parts[0];
-        if (part.inlineData) {
-            outputUrl = `data:${part.inlineData.mimeType};base64,${part.inlineData.data}`;
-        } else if (part.text) {
-           // We expect an image. If it returned text, it's a hallucination or refusal constraint.
-           throw new Error(`Generation failed! Model hallucinated text: "${part.text.trim().substring(0, 100)}..."`);
-        }
-      }
-      
-    } catch (apiError: any) {
-      console.warn("generateContent failed, falling back to generateImages. Error:", apiError.message);
-      // Fallback if generateImages is the correct sdk method for this preview model
       const imageResponse = await ai.models.generateImages({
-        model: 'gemini-3.1-flash-image-preview',
-        prompt: prompt,
-        // Optional SDK parameters usually might have an image field for editing
+        model: 'imagen-3.0-generate-001',
+        prompt: newPrompt,
+        config: {
+          numberOfImages: 1,
+          outputMimeType: 'image/jpeg',
+          aspectRatio: format === 'youtube-thumbnail' ? '16:9' : '1:1',
+        }
       });
       
       if (imageResponse?.generatedImages && imageResponse.generatedImages.length > 0) {
@@ -117,6 +84,8 @@ export async function POST(req: Request) {
            outputUrl = (generatedImg as any).imageUri;
          }
       }
+    } catch (apiError: any) {
+      console.warn("generateImages failed. Error:", apiError.message);
     }
 
     if (!outputUrl) {
