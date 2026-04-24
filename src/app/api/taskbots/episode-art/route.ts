@@ -92,8 +92,8 @@ export async function POST(req: Request) {
         if (part.inlineData) {
             outputUrl = `data:${part.inlineData.mimeType};base64,${part.inlineData.data}`;
         } else if (part.text) {
-           // Maybe it returns a URL in text
-           outputUrl = part.text.trim();
+           // We expect an image. If it returned text, it's a hallucination or refusal constraint.
+           throw new Error(`Generation failed! Model hallucinated text: "${part.text.trim().substring(0, 100)}..."`);
         }
       }
       
@@ -118,6 +118,10 @@ export async function POST(req: Request) {
 
     if (!outputUrl) {
         return NextResponse.json({ error: 'Failed to extract generated image from API response.' }, { status: 500 });
+    }
+
+    if (outputUrl && !outputUrl.startsWith('http') && !outputUrl.startsWith('data:')) {
+        return NextResponse.json({ error: `Final extracted URL is invalid: ${outputUrl}` }, { status: 500 });
     }
 
     return NextResponse.json({ success: true, imageUrl: outputUrl });
