@@ -90,7 +90,7 @@ export async function POST(req: Request) {
       // Fallback: If Google AI Studio rejects the Imagen 3 model (e.g. Regional/Access 404),
       // we maintain the pipeline flow by mocking the generation with a proper aspect-ratio placeholder.
       if (apiError.message?.includes('404') || apiError.message?.includes('not found') || apiError.message?.toLowerCase().includes('failed')) {
-         const fallbackUrl = \`https://placehold.co/\${format === 'youtube-thumbnail' ? '1920x1080' : '800x800'}/18181b/ffffff?text=\${encodeURIComponent(title.substring(0, 30) + (title.length > 30 ? '...' : ''))}\`;
+         const fallbackUrl = `https://placehold.co/${format === 'youtube-thumbnail' ? '1920x1080' : '800x800'}/18181b/ffffff?text=${encodeURIComponent(title.substring(0, 30) + (title.length > 30 ? '...' : ''))}`;
          return NextResponse.json({ success: true, imageUrl: fallbackUrl });
       }
 
