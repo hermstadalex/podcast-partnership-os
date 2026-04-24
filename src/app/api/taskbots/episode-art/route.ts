@@ -62,7 +62,7 @@ export async function POST(req: Request) {
     const imageBase64 = Buffer.from(imageArrayBuffer).toString('base64');
     const mimeType = imageRes.headers.get('content-type') || 'image/jpeg';
     
-    const newPrompt = \`Replace the existing text with this new title: \${title}. Center the new text horizontally and vertically in the same text area. Maintain all other background elements perfectly.\`;
+    const newPrompt = `Replace the existing text with this new title: ${title}. Center the new text horizontally and vertically in the same text area. Maintain all other background elements perfectly.`;
 
     const ai = new GoogleGenAI({ apiKey });
     let outputUrl = '';
@@ -87,7 +87,7 @@ export async function POST(req: Request) {
         // Iterate through parts to find the image part
         for (const part of parts) {
             if (part.inlineData) {
-                outputUrl = \`data:\${part.inlineData.mimeType || 'image/jpeg'};base64,\${part.inlineData.data}\`;
+                outputUrl = `data:${part.inlineData.mimeType || 'image/jpeg'};base64,${part.inlineData.data}`;
                 break;
             }
         }
@@ -100,12 +100,12 @@ export async function POST(req: Request) {
     // Unconditional Fallback: If outputUrl failed to generate
     if (!outputUrl) {
         console.warn("Falling back to placeholder mockup for:", format);
-        const fallbackUrl = \`https://placehold.co/\${format === 'youtube-thumbnail' ? '1920x1080' : '800x800'}/18181b/ffffff?text=\${encodeURIComponent(title.substring(0, 30) + (title.length > 30 ? '...' : ''))}\`;
+        const fallbackUrl = `https://placehold.co/${format === 'youtube-thumbnail' ? '1920x1080' : '800x800'}/18181b/ffffff?text=${encodeURIComponent(title.substring(0, 30) + (title.length > 30 ? '...' : ''))}`;
         return NextResponse.json({ success: true, imageUrl: fallbackUrl });
     }
 
     if (outputUrl && !outputUrl.startsWith('http') && !outputUrl.startsWith('data:')) {
-        return NextResponse.json({ error: \`Final extracted URL is invalid: \${outputUrl}\` }, { status: 500 });
+        return NextResponse.json({ error: `Final extracted URL is invalid: ${outputUrl}` }, { status: 500 });
     }
 
     return NextResponse.json({ success: true, imageUrl: outputUrl });
