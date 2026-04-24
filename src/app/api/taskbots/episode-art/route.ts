@@ -83,6 +83,7 @@ export async function POST(req: Request) {
          } else if ((generatedImg as any)?.imageUri) {
            outputUrl = (generatedImg as any).imageUri;
          }
+      }
     } catch (apiError: any) {
       console.warn("generateImages failed. Error:", apiError.message);
       
