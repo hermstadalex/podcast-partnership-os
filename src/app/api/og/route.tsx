@@ -1,0 +1,77 @@
+import { ImageResponse } from 'next/og';
+
+export const runtime = 'edge';
+
+export async function GET(request: Request) {
+  try {
+    const { searchParams } = new URL(request.url);
+    const title = searchParams.get('title') || 'New Episode';
+    const bg = searchParams.get('bg') || '';
+    const format = searchParams.get('format') || 'podcast-art';
+
+    const width = format === 'youtube-thumbnail' ? 1920 : 1080;
+    const height = format === 'youtube-thumbnail' ? 1080 : 1080;
+
+    return new ImageResponse(
+      (
+        <div
+          style={{
+            display: 'flex',
+            width: '100%',
+            height: '100%',
+            backgroundColor: '#111',
+            backgroundImage: bg ? \`url(\${bg})\` : 'none',
+            backgroundSize: 'cover',
+            backgroundPosition: 'center',
+            alignItems: 'center',
+            justifyContent: 'center',
+            flexDirection: 'column',
+          }}
+        >
+          {/* Subtle dark overlay for text readability */}
+          <div
+            style={{
+              position: 'absolute',
+              top: 0,
+              left: 0,
+              right: 0,
+              bottom: 0,
+              backgroundColor: 'rgba(0,0,0,0.4)',
+            }}
+          />
+          {/* Typography container */}
+          <div
+            style={{
+              display: 'flex',
+              padding: '40px 100px',
+              textAlign: 'center',
+              zIndex: 10,
+            }}
+          >
+            <h1
+              style={{
+                fontSize: format === 'youtube-thumbnail' ? 100 : 80,
+                fontWeight: 900,
+                color: 'white',
+                letterSpacing: '-0.02em',
+                lineHeight: 1.1,
+                textShadow: '0 8px 16px rgba(0,0,0,0.8)',
+                margin: 0,
+              }}
+            >
+              {title}
+            </h1>
+          </div>
+        </div>
+      ),
+      {
+        width,
+        height,
+      }
+    );
+  } catch (e: any) {
+    return new Response(\`Failed to generate image: \${e.message}\`, {
+      status: 500,
+    });
+  }
+}
