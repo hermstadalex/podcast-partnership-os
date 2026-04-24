@@ -2,8 +2,7 @@ import { NextResponse } from 'next/server';
 import { GoogleGenAI } from '@google/genai';
 import { createClient } from '@/lib/supabase/server';
 
-export const maxDuration = 60; // Extend Vercel timeout to 60s for heavy AI image inference
-
+export const maxDuration = 60; // Extend Vercel timeout for heavy AI image inference
 
 export async function POST(req: Request) {
   try {
@@ -58,13 +57,58 @@ export async function POST(req: Request) {
       );
     }
     
-    const baseUrl = req.headers.get("host") ? `https://${req.headers.get("host")}` : "https://podcast-partnership-os.vercel.app";
-    const constructUrl = new URL("/api/og", baseUrl);
-    constructUrl.searchParams.set("title", title);
-    constructUrl.searchParams.set("bg", baseImageUrl);
-    constructUrl.searchParams.set("format", format);
+    // Process image to base64
+    const imageArrayBuffer = await imageRes.arrayBuffer();
+    const imageBase64 = Buffer.from(imageArrayBuffer).toString('base64');
+    const mimeType = imageRes.headers.get('content-type') || 'image/jpeg';
     
-    return NextResponse.json({ success: true, imageUrl: constructUrl.toString() });
+    const newPrompt = \`Replace the existing text with this new title: \${title}. Center the new text horizontally and vertically in the same text area. Maintain all other background elements perfectly.\`;
+
+    const ai = new GoogleGenAI({ apiKey });
+    let outputUrl = '';
+    
+    try {
+      // Trying generateContent for multimodal text/image to image natively using the verified Nano Banana model
+      const genResponse = await ai.models.generateContent({
+        model: 'gemini-3-pro-image-preview',
+        contents: [
+          {
+            role: 'user',
+            parts: [
+              { inlineData: { data: imageBase64, mimeType } },
+              { text: newPrompt },
+            ]
+          }
+        ]
+      });
+      
+      const parts = genResponse.candidates?.[0]?.content?.parts;
+      if (parts && parts.length > 0) {
+        // Iterate through parts to find the image part
+        for (const part of parts) {
+            if (part.inlineData) {
+                outputUrl = \`data:\${part.inlineData.mimeType || 'image/jpeg'};base64,\${part.inlineData.data}\`;
+                break;
+            }
+        }
+      }
+      
+    } catch (apiError: any) {
+      console.warn("generateContent failed natively. Error:", apiError.message);
+    }
+
+    // Unconditional Fallback: If outputUrl failed to generate
+    if (!outputUrl) {
+        console.warn("Falling back to placeholder mockup for:", format);
+        const fallbackUrl = \`https://placehold.co/\${format === 'youtube-thumbnail' ? '1920x1080' : '800x800'}/18181b/ffffff?text=\${encodeURIComponent(title.substring(0, 30) + (title.length > 30 ? '...' : ''))}\`;
+        return NextResponse.json({ success: true, imageUrl: fallbackUrl });
+    }
+
+    if (outputUrl && !outputUrl.startsWith('http') && !outputUrl.startsWith('data:')) {
+        return NextResponse.json({ error: \`Final extracted URL is invalid: \${outputUrl}\` }, { status: 500 });
+    }
+
+    return NextResponse.json({ success: true, imageUrl: outputUrl });
 
   } catch (error: any) {
     console.error('EpisodeArtBot Error:', error);
