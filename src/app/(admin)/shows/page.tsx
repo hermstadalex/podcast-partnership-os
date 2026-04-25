@@ -13,6 +13,7 @@ type ShowCard = {
   title: string;
   description?: string | null;
   cover_art?: string | null;
+  abbreviation?: string | null;
   captivate_show_id: string;
 };
 
@@ -108,7 +109,14 @@ export default function ShowsPage() {
                   </div>
                   
                   <div className="flex flex-col flex-1">
-                    <h3 className="font-semibold text-zinc-100 line-clamp-1">{show.title}</h3>
+                    <div className="flex items-start gap-2">
+                      <h3 className="font-semibold text-zinc-100 line-clamp-1">{show.title}</h3>
+                      {show.abbreviation && (
+                        <span className="inline-flex items-center justify-center px-1.5 py-0.5 text-[10px] font-mono font-bold bg-indigo-500/10 text-indigo-400 border border-indigo-500/20 rounded mt-0.5 shrink-0">
+                          {show.abbreviation}
+                        </span>
+                      )}
+                    </div>
                     <p className="text-sm text-zinc-400 mt-1 line-clamp-2">{show.description || 'No description available.'}</p>
                     
                     <div className="mt-4 pt-4 border-t border-zinc-800 flex items-center justify-between text-xs text-zinc-500">
