@@ -439,8 +439,8 @@ export async function dispatchEpisodePublish(episodeId: string) {
   const targetShow = await resolveAuthorizedShow(supabase, user, episode.show_id);
   const destinationAccount = await getDefaultDestinationAccount(supabase, targetShow.id);
 
-  if (!destinationAccount?.external_account_id) {
-    throw new Error('No publish destination is configured for this show.');
+  if (!destinationAccount?.external_account_id && !process.env.ZERNIO_YOUTUBE_ACCOUNT_ID) {
+    throw new Error('No publish destination is configured for this show and no test account fallback was found.');
   }
 
   const captivatePayload = { 
@@ -456,8 +456,8 @@ export async function dispatchEpisodePublish(episodeId: string) {
     publishNow: true,
     platforms: [
       {
-        platform: destinationAccount.platform || 'youtube',
-        accountId: process.env.ZERNIO_YOUTUBE_ACCOUNT_ID || destinationAccount.external_account_id,
+        platform: destinationAccount?.platform || 'youtube',
+        accountId: process.env.ZERNIO_YOUTUBE_ACCOUNT_ID || destinationAccount?.external_account_id,
         platformSpecificData: {
           title: episode.title,
           visibility: 'private',
@@ -533,7 +533,7 @@ export async function dispatchEpisodePublish(episodeId: string) {
       }
 
       console.log(
-        `[PIPELINE] Dispatched to Zernio YouTube Account: ${process.env.ZERNIO_YOUTUBE_ACCOUNT_ID || destinationAccount.external_account_id}. Post ID: ${zernioPostId}. Initial Status: ${initialStatus}`
+        `[PIPELINE] Dispatched to Zernio YouTube Account: ${process.env.ZERNIO_YOUTUBE_ACCOUNT_ID || destinationAccount?.external_account_id}. Post ID: ${zernioPostId}. Initial Status: ${initialStatus}`
       );
     } catch (err: unknown) {
       hasError = true;
