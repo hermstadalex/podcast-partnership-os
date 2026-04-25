@@ -40,9 +40,12 @@ yarn-error.log*
 *.tsbuildinfo
 next-env.d.ts
 
-# local scratch files
-test*.mjs
-test*.json
-*.mp4
-*.aiff
-*.m4a
+# local scratch files / media
+tests/fixtures/media/*.mp4
+tests/fixtures/media/*.aiff
+tests/fixtures/media/*.m4a
+scripts/experimental/*.json
+
+# test output artifacts
+/playwright-report/
+/test-results/

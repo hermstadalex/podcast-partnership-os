@@ -1,1 +1,0 @@
-{"test1":{"status":400,"body":{"error":"\"summary\" is required"}},"test2":{"status":400,"body":{"error":"\"categories\" is required"}}}

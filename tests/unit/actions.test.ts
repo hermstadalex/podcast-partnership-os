@@ -26,7 +26,7 @@ jest.mock('@/lib/supabase/server', () => ({
   createClient: jest.fn(),
 }));
 
-import { publishEpisode } from '@/app/actions';
+import { dispatchEpisodePublish } from '@/app/actions';
 import { captivateApi } from '@/lib/services/captivate';
 import { zernioApi } from '@/lib/services/zernio';
 import { createClient } from '@/lib/supabase/server';
@@ -46,7 +46,8 @@ function createQueryBuilder(table: string) {
     filters: {},
   };
 
-  const builder = {
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const builder: any = {
     select: jest.fn(() => builder),
     insert: jest.fn((payload: Record<string, unknown>) => {
       state.inserted = payload;
@@ -118,7 +119,7 @@ function createQueryBuilder(table: string) {
   return builder;
 }
 
-describe('Action: publishEpisode', () => {
+describe('Action: dispatchEpisodePublish', () => {
   beforeEach(() => {
     jest.spyOn(console, 'log').mockImplementation(() => {});
     jest.spyOn(console, 'warn').mockImplementation(() => {});
@@ -143,7 +144,7 @@ describe('Action: publishEpisode', () => {
   });
 
   it('creates canonical episode and publish run records before dispatching providers', async () => {
-    const result = await publishEpisode('http://test.com/audio.mp3', 'Test Title', 'Notes', 'show-1');
+    const result = await dispatchEpisodePublish('episode-1');
 
     expect(result).toBe(true);
     expect(captivateApi.createEpisode).toHaveBeenCalledWith('captivate-show-1', {
