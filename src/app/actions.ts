@@ -1,14 +1,9 @@
 'use server'
 
-import fs from 'fs';
-import os from 'os';
-import path from 'path';
-
-import { GoogleGenAI } from '@google/genai';
-
 import { createClient } from '@/lib/supabase/server';
 import { captivateApi } from '@/lib/services/captivate';
 import { zernioApi } from '@/lib/services/zernio';
+import { generateEpisodeAssetsWithGemini, generateVisualAssetsWithGemini } from '@/lib/integrations/gemini';
 
 type UserRecord = {
   email?: string | null;
@@ -260,132 +255,11 @@ export async function getSubmissionStatus(postId: string) {
 }
 
 export async function generateEpisodeAssets(mediaUrl: string) {
-  const apiKey = process.env.GEMINI_API_KEY;
-  if (!apiKey) {
-    throw new Error('GEMINI_API_KEY is not configured in .env.local');
-  }
-
-  const ai = new GoogleGenAI({ apiKey });
-  const tempPath = path.join(os.tmpdir(), `upload-${Date.now()}.mp3`);
-
-  try {
-    const response = await fetch(mediaUrl);
-    if (!response.ok) {
-      throw new Error('Failed to fetch media');
-    }
-
-    const buffer = Buffer.from(await response.arrayBuffer());
-    fs.writeFileSync(tempPath, buffer);
-  } catch (err) {
-    console.error('Error downloading file:', err);
-    throw new Error('Could not download the file to process.');
-  }
-
-  let fileResult;
-  try {
-    fileResult = await ai.files.upload({ file: tempPath });
-
-    let fileHandle = await ai.files.get({ name: fileResult.name! });
-    while (fileHandle.state === 'PROCESSING') {
-      await new Promise((resolve) => setTimeout(resolve, 2000));
-      fileHandle = await ai.files.get({ name: fileResult.name! });
-    }
-
-    if (fileHandle.state === 'FAILED') {
-      throw new Error('File processing failed.');
-    }
-
-    const prompt = `You are an elite podcast producer. Listen to the provided audio/video track.
-Your goal is to extract the core themes and produce a highly engaging Title and Description.
-- The Title must be under 60 characters, "hooky", and maximize CTR.
-- The Description must contain a summary and a timestamped table of contents.
-Output as a JSON object strictly matching this schema:
-{
-  "aiTitle": "string",
-  "aiDescription": "string"
-}`;
-
-    let genResponse;
-    let retries = 5;
-    while (retries > 0) {
-      try {
-        genResponse = await ai.models.generateContent({
-          model: 'gemini-2.5-flash',
-          contents: [
-            {
-              role: 'user',
-              parts: [
-                { text: prompt },
-                { fileData: { fileUri: fileHandle.uri, mimeType: fileHandle.mimeType } },
-              ],
-            },
-          ],
-          config: {
-            responseMimeType: 'application/json',
-          },
-        });
-        break;
-      } catch (err: unknown) {
-        const status = typeof err === 'object' && err !== null && 'status' in err ? (err as { status?: number }).status : undefined;
-        if (status === 503 && retries > 1) {
-          console.warn('Gemini 503 High Demand detected! Retrying in 5 seconds...');
-          await new Promise((resolve) => setTimeout(resolve, 5000));
-          retries -= 1;
-        } else {
-          throw err;
-        }
-      }
-    }
-
-    const resultText = genResponse?.text;
-    const result = resultText ? JSON.parse(resultText) : {};
-
-    return {
-      aiTitle: result.aiTitle || 'Untitled Episode',
-      aiDescription: result.aiDescription || 'No description provided.',
-    };
-  } finally {
-    if (fs.existsSync(tempPath)) {
-      fs.unlinkSync(tempPath);
-    }
-
-    if (fileResult?.name) {
-      try {
-        await ai.files.delete({ name: fileResult.name! });
-      } catch {}
-    }
-  }
+  return generateEpisodeAssetsWithGemini(mediaUrl);
 }
 
 export async function generateVisualAssets(title: string, description: string) {
-  const apiKey = process.env.GEMINI_API_KEY;
-  if (!apiKey) {
-    throw new Error('GEMINI_API_KEY is not configured in .env.local');
-  }
-
-  const ai = new GoogleGenAI({ apiKey });
-  void ai;
-
-  const generateImage = async (_prompt: string, prefix: string) => {
-    return `https://placehold.co/${prefix === 'youtube-thumbnail' ? '1920x1080' : '800x800'}?text=AI+Art+Generation+Pipeline+Unconfigured`;
-  };
-
-  const podcastArtPrompt = `Create a visually striking podcast cover art representing the following episode:
-Title: ${title}
-Description: ${description}
-Your goal is to make the art highly clickable and dynamic. Create it perfectly square, 1:1 aspect ratio. Do not include any actual text or words in the image.`;
-
-  const thumbPrompt = `Create a highly engaging YouTube thumbnail representing the following episode:
-Title: ${title}
-Description: ${description}
-The image should have a cinematic look to stand out in the algorithm. Create it perfectly landscape, 16:9 aspect ratio. Do not include any actual text or words in the image.`;
-
-  const [podcastArtUrl, youtubeThumbUrl] = await Promise.all([
-    generateImage(podcastArtPrompt, 'art'),
-    generateImage(thumbPrompt, 'thumb'),
-  ]);
-
-  return { podcastArtUrl, youtubeThumbUrl };
+  return generateVisualAssetsWithGemini(title, description);
 }
 
 export async function saveEpisodeDraft(mediaUrl: string, title: string, description: string, showId?: string) {
