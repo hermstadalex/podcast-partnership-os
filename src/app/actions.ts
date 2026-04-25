@@ -457,7 +457,7 @@ export async function dispatchEpisodePublish(episodeId: string) {
     platforms: [
       {
         platform: destinationAccount?.platform || 'youtube',
-        accountId: process.env.ZERNIO_YOUTUBE_ACCOUNT_ID || destinationAccount?.external_account_id,
+        accountId: (process.env.ZERNIO_YOUTUBE_ACCOUNT_ID || destinationAccount?.external_account_id) || '',
         platformSpecificData: {
           title: episode.title,
           visibility: 'private',
