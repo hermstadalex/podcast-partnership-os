@@ -1,14 +1,9 @@
 import 'server-only';
-
-export type CaptivateShow = {
-  id: string;
-  title: string;
-  author?: string;
-  description?: string;
-  artwork?: string;
-  cover_art?: string;
-  image?: string;
-};
+import { 
+  CaptivateShowsResponseSchema, 
+  CaptivateShowResponseSchema, 
+  type CaptivateShow 
+} from '@/lib/validation/captivate';
 
 export type CaptivateEpisodePayload = {
   title: string;
@@ -86,7 +81,8 @@ export class CaptivateService {
     });
 
     if (!res.ok) throw new Error(`Captivate API error: ${res.statusText}`);
-    return res.json();
+    const data = await res.json();
+    return CaptivateShowsResponseSchema.parse(data);
   }
 
   async updateShowMetadata(id: string, data: CaptivateShowMetadataUpdate) {
@@ -97,8 +93,9 @@ export class CaptivateService {
       headers: { 'Authorization': `Bearer ${this.token}` }
     });
     if (!getRes.ok) throw new Error(`Captivate API error fetching show: ${getRes.statusText}`);
-    const getJson = await getRes.json();
-    const show = getJson.show;
+    const getJsonRaw = await getRes.json();
+    const getJson = CaptivateShowResponseSchema.parse(getJsonRaw);
+    const show = getJson.show as any;
 
     // 2. Normalize and strip bad properties that Captivate's validator rejects
     const cleanShow: any = {};

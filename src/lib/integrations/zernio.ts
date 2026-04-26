@@ -1,4 +1,5 @@
 import 'server-only';
+import { ZernioPostResponseSchema, type ZernioPostResponse } from '@/lib/validation/zernio';
 
 export type ZernioPostPayload = {
   content: string;
@@ -12,26 +13,6 @@ export type ZernioPostPayload = {
     accountId: string;
     platformSpecificData?: Record<string, unknown>;
   }>;
-};
-
-export type ZernioPlatformStatus = {
-  platform: string;
-  platformPostId?: string;
-  platformPostUrl?: string;
-  publishedAt?: string;
-  status?: string;
-};
-
-export type ZernioPostResponse = {
-  _id?: string;
-  post?: {
-    _id: string;
-    status: string;
-    platforms: ZernioPlatformStatus[];
-    publishedAt?: string;
-  };
-  status?: string;
-  platforms?: ZernioPlatformStatus[];
 };
 
 export type ZernioPublishResult = {
@@ -75,14 +56,16 @@ export class ZernioService {
   }
 
   async createPost(payload: ZernioPostPayload): Promise<ZernioPostResponse> {
-    return this.fetchApi('/posts', {
+    const data = await this.fetchApi('/posts', {
       method: 'POST',
       body: JSON.stringify(payload),
     });
+    return ZernioPostResponseSchema.parse(data);
   }
 
   async getSubmissionStatus(postId: string): Promise<ZernioPostResponse> {
-    return this.fetchApi(`/posts/${postId}`);
+    const data = await this.fetchApi(`/posts/${postId}`);
+    return ZernioPostResponseSchema.parse(data);
   }
 
   /**

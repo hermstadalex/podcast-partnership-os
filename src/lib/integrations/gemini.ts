@@ -3,10 +3,7 @@ import os from 'os';
 import path from 'path';
 import { GoogleGenAI } from '@google/genai';
 
-export type EpisodeAssetsResult = {
-  aiTitle: string;
-  aiDescription: string;
-};
+import { EpisodeAssetsResultSchema, type EpisodeAssetsResult } from '@/lib/validation/gemini';
 
 export type VisualAssetsResult = {
   podcastArtUrl: string;
@@ -100,12 +97,8 @@ Output as a JSON object strictly matching this schema:
     }
 
     const resultText = genResponse?.text;
-    const result = resultText ? JSON.parse(resultText) : {};
-
-    return {
-      aiTitle: result.aiTitle || 'Untitled Episode',
-      aiDescription: result.aiDescription || 'No description provided.',
-    };
+    const resultRaw = resultText ? JSON.parse(resultText) : {};
+    return EpisodeAssetsResultSchema.parse(resultRaw);
   } finally {
     // 5. Cleanup
     if (fs.existsSync(tempPath)) {
