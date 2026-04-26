@@ -4,34 +4,15 @@ import { createClient } from '@/lib/supabase/server';
 import { captivateApi } from '@/lib/integrations/captivate';
 import { zernioApi } from '@/lib/integrations/zernio';
 import { generateEpisodeAssetsWithGemini, generateVisualAssetsWithGemini } from '@/lib/integrations/gemini';
-
-type UserRecord = {
-  email?: string | null;
-};
-
-type ClientRecord = {
-  id: string;
-  email: string;
-  name: string;
-};
-
-type ShowRecord = {
-  id: string;
-  client_id: string | null;
-  captivate_show_id: string;
-  title: string;
-  description?: string | null;
-  author?: string | null;
-  cover_art?: string | null;
-  youtube_reference_art?: string | null;
-  podcast_reference_art?: string | null;
-};
-
-type PublishDestinationAccount = {
-  id: string;
-  external_account_id: string;
-  platform?: string | null;
-};
+import { 
+  getShowByIdentifier, 
+  resolveAuthorizedShow, 
+  getDefaultDestinationAccount, 
+  createPublishRun 
+} from '@/lib/supabase/queries';
+function getErrorMessage(error: unknown) {
+  return error instanceof Error ? error.message : 'Unknown error';
+}
 
 type EpisodeRunRecord = {
   provider: string;
@@ -51,141 +32,6 @@ type EpisodeFeedRecord = {
   } | null;
   runs?: EpisodeRunRecord[] | null;
 };
-
-function getErrorMessage(error: unknown) {
-  return error instanceof Error ? error.message : 'Unknown error';
-}
-
-async function getShowByIdentifier(supabase: Awaited<ReturnType<typeof createClient>>, identifier: string) {
-  const byId = await supabase
-    .from('shows')
-    .select('*')
-    .eq('id', identifier)
-    .maybeSingle();
-
-  if (byId.data) {
-    return byId.data as ShowRecord;
-  }
-
-  const byCaptivateId = await supabase
-    .from('shows')
-    .select('*')
-    .eq('captivate_show_id', identifier)
-    .maybeSingle();
-
-  return (byCaptivateId.data || null) as ShowRecord | null;
-}
-
-async function getClientByEmail(supabase: Awaited<ReturnType<typeof createClient>>, email: string) {
-  const { data } = await supabase
-    .from('clients')
-    .select('id, email, name')
-    .eq('email', email)
-    .single();
-
-  return (data || null) as ClientRecord | null;
-}
-
-async function resolveAuthorizedShow(
-  supabase: Awaited<ReturnType<typeof createClient>>,
-  user: UserRecord,
-  showId?: string
-) {
-  const isAdmin = user.email === 'podcastpartnership@gmail.com';
-
-  if (isAdmin) {
-    if (!showId) {
-      throw new Error('Admins must explicitly provide a showId to publish.');
-    }
-
-    const show = await getShowByIdentifier(supabase, showId);
-    if (!show) {
-      throw new Error('Target show not found.');
-    }
-
-    return show;
-  }
-
-  if (!user.email) {
-    throw new Error('Unauthorized');
-  }
-
-  const client = await getClientByEmail(supabase, user.email);
-  if (!client) {
-    throw new Error('Client account unconfigured');
-  }
-
-  if (showId) {
-    const show = await getShowByIdentifier(supabase, showId);
-    if (!show || show.client_id !== client.id) {
-      throw new Error('Unauthorized: Show ID mismatch');
-    }
-    return show;
-  }
-
-  const { data: firstShow } = await supabase
-    .from('shows')
-    .select('*')
-    .eq('client_id', client.id)
-    .order('created_at', { ascending: true })
-    .limit(1)
-    .maybeSingle();
-
-  if (!firstShow) {
-    throw new Error('Client account has no assigned shows.');
-  }
-
-  return firstShow as ShowRecord;
-}
-
-async function getDefaultDestinationAccount(
-  supabase: Awaited<ReturnType<typeof createClient>>,
-  showId: string
-) {
-  const { data: destination } = await supabase
-    .from('show_publish_destinations')
-    .select('zernio_account_id, is_default')
-    .eq('show_id', showId)
-    .order('is_default', { ascending: false })
-    .limit(1)
-    .maybeSingle();
-
-  if (!destination) {
-    return null;
-  }
-
-  const { data: account } = await supabase
-    .from('zernio_accounts')
-    .select('id, external_account_id, platform')
-    .eq('id', destination.zernio_account_id)
-    .maybeSingle();
-
-  return (account || null) as PublishDestinationAccount | null;
-}
-
-async function createPublishRun(
-  supabase: Awaited<ReturnType<typeof createClient>>,
-  episodeId: string,
-  provider: 'captivate' | 'zernio' | 'youtube',
-  requestPayload: Record<string, unknown>
-) {
-  const { data, error } = await supabase
-    .from('episode_publish_runs')
-    .insert({
-      episode_id: episodeId,
-      provider,
-      status: 'Processing',
-      request_payload: requestPayload,
-    })
-    .select('id')
-    .single();
-
-  if (error) {
-    throw new Error(`Failed to create ${provider} publish run: ${error.message}`);
-  }
-
-  return data.id as string;
-}
 
 export async function getShows() {
   const supabase = await createClient();
