@@ -2,7 +2,7 @@
 
 import { createClient } from '@/lib/supabase/server';
 import { captivateApi } from '@/lib/integrations/captivate';
-import { zernioApi } from '@/lib/services/zernio';
+import { zernioApi } from '@/lib/integrations/zernio';
 import { generateEpisodeAssetsWithGemini, generateVisualAssetsWithGemini } from '@/lib/integrations/gemini';
 
 type UserRecord = {
@@ -324,21 +324,7 @@ export async function dispatchEpisodePublish(episodeId: string) {
     // Add logic to pass episode art url if we saved it to episode table? Captivate api doesn't directly consume it right now in snippet.
   };
   
-  const zernioPayload = {
-    content: episode.description,
-    mediaItems: [{ type: 'video', url: episode.media_url }],
-    publishNow: true,
-    platforms: [
-      {
-        platform: destinationAccount?.platform || 'youtube',
-        accountId: (process.env.ZERNIO_YOUTUBE_ACCOUNT_ID || destinationAccount?.external_account_id) || '',
-        platformSpecificData: {
-          title: episode.title,
-          visibility: 'private',
-        },
-      },
-    ],
-  };
+  const zernioPayload = zernioApi.constructYouTubePayload(episode, destinationAccount);
 
   const captivateRunId = await createPublishRun(supabase, episodeId, 'captivate', captivatePayload);
   const zernioRunId = await createPublishRun(supabase, episodeId, 'zernio', zernioPayload);
@@ -374,40 +360,32 @@ export async function dispatchEpisodePublish(episodeId: string) {
     }
 
     try {
-      const zernioData = await zernioApi.createPost(zernioPayload);
-      const zernioPostId = zernioData.post?._id || zernioData._id;
-
-      let initialStatus = 'Processing';
-      if (zernioData.post?.status === 'published' || zernioData.status === 'published') {
-        initialStatus = 'Published';
-      }
+      const zernioResult = await zernioApi.publishEpisode(zernioPayload);
 
       await supabase
         .from('episode_publish_runs')
         .update({
-          external_entity_id: zernioPostId,
-          status: initialStatus,
-          completed_at: initialStatus === 'Published' ? new Date().toISOString() : null,
+          external_entity_id: zernioResult.externalId,
+          status: zernioResult.status,
+          completed_at: zernioResult.status === 'Published' ? new Date().toISOString() : null,
           updated_at: new Date().toISOString(),
         })
         .eq('id', zernioRunId);
 
-      const syncedPlatforms = zernioData.post?.platforms || zernioData.platforms || [];
-      const ytPlatform = syncedPlatforms.find((p: any) => p.platform === 'youtube');
-      if (initialStatus === 'Published' && ytPlatform && (ytPlatform.platformPostId || ytPlatform.platformPostUrl)) {
+      if (zernioResult.status === 'Published' && (zernioResult.youtubeVideoId || zernioResult.youtubeVideoUrl)) {
         await supabase
           .from('episodes')
           .update({
-            youtube_video_id: ytPlatform.platformPostId || null,
-            youtube_video_url: ytPlatform.platformPostUrl || null,
-            published_at: ytPlatform.publishedAt || zernioData.post?.publishedAt || new Date().toISOString(),
+            youtube_video_id: zernioResult.youtubeVideoId || null,
+            youtube_video_url: zernioResult.youtubeVideoUrl || null,
+            published_at: zernioResult.publishedAt || new Date().toISOString(),
             updated_at: new Date().toISOString(),
           })
           .eq('id', episodeId);
       }
 
       console.log(
-        `[PIPELINE] Dispatched to Zernio YouTube Account: ${process.env.ZERNIO_YOUTUBE_ACCOUNT_ID || destinationAccount?.external_account_id}. Post ID: ${zernioPostId}. Initial Status: ${initialStatus}`
+        `[PIPELINE] Dispatched to Zernio YouTube Account: ${process.env.ZERNIO_YOUTUBE_ACCOUNT_ID || destinationAccount?.external_account_id}. Post ID: ${zernioResult.externalId}. Initial Status: ${zernioResult.status}`
       );
     } catch (err: unknown) {
       hasError = true;

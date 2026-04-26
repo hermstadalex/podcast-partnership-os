@@ -1,4 +1,4 @@
-import { ZernioService } from '@/lib/services/zernio';
+import { ZernioService } from '@/lib/integrations/zernio';
 
 describe('ZernioService', () => {
   const originalFetch = global.fetch;

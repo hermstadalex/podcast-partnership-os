@@ -15,10 +15,28 @@ jest.mock('@/lib/integrations/captivate', () => ({
   },
 }));
 
-jest.mock('@/lib/services/zernio', () => ({
+jest.mock('@/lib/integrations/zernio', () => ({
   zernioApi: {
-    createPost: jest.fn().mockResolvedValue({ post: { _id: 'zernio-post-1' } }),
+    createPost: jest.fn().mockResolvedValue({
+      _id: 'zernio-post-1',
+      status: 'published',
+      platforms: [
+        {
+          platform: 'youtube',
+          platformPostId: 'yt-vid-1',
+          platformPostUrl: 'https://youtube.com/watch?v=yt-vid-1',
+        },
+      ],
+    }),
     getSubmissionStatus: jest.fn(),
+    constructYouTubePayload: jest.fn().mockReturnValue({}),
+    publishEpisode: jest.fn().mockResolvedValue({
+      externalId: 'zernio-post-1',
+      status: 'Published',
+      youtubeVideoId: 'yt-vid-1',
+      youtubeVideoUrl: 'https://youtube.com/watch?v=yt-vid-1',
+      publishedAt: '2026-04-26T00:00:00Z',
+    }),
   },
 }));
 
@@ -28,7 +46,7 @@ jest.mock('@/lib/supabase/server', () => ({
 
 import { dispatchEpisodePublish } from '@/app/actions';
 import { captivateApi } from '@/lib/integrations/captivate';
-import { zernioApi } from '@/lib/services/zernio';
+import { zernioApi } from '@/lib/integrations/zernio';
 import { createClient } from '@/lib/supabase/server';
 
 type QueryState = {
@@ -161,16 +179,8 @@ describe('Action: dispatchEpisodePublish', () => {
       description: 'Test Description',
       mediaUrl: 'http://test.com/audio.mp3',
     });
-    expect(zernioApi.createPost).toHaveBeenCalledWith(
-      expect.objectContaining({
-        platforms: [
-          expect.objectContaining({
-            accountId: 'youtube-account-1',
-            platform: 'youtube',
-          }),
-        ],
-      })
-    );
+    expect(zernioApi.constructYouTubePayload).toHaveBeenCalled();
+    expect(zernioApi.publishEpisode).toHaveBeenCalled();
     expect(console.log).toHaveBeenCalledWith(expect.stringContaining('[PIPELINE] Dispatched to Captivate Drafts.'));
     expect(console.log).toHaveBeenCalledWith(expect.stringContaining('[PIPELINE] Dispatched to Zernio YouTube Account:'));
   });
