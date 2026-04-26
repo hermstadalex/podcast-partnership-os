@@ -1,7 +1,7 @@
 'use server'
 
 import { createClient } from '@/lib/supabase/server';
-import { captivateApi } from '@/lib/services/captivate';
+import { captivateApi } from '@/lib/integrations/captivate';
 import { zernioApi } from '@/lib/services/zernio';
 import { generateEpisodeAssetsWithGemini, generateVisualAssetsWithGemini } from '@/lib/integrations/gemini';
 

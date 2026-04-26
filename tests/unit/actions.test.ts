@@ -7,7 +7,7 @@ jest.mock('@google/genai', () => ({
   })),
 }));
 
-jest.mock('@/lib/services/captivate', () => ({
+jest.mock('@/lib/integrations/captivate', () => ({
   captivateApi: {
     createEpisode: jest.fn().mockResolvedValue({}),
     getShows: jest.fn(),
@@ -27,7 +27,7 @@ jest.mock('@/lib/supabase/server', () => ({
 }));
 
 import { dispatchEpisodePublish } from '@/app/actions';
-import { captivateApi } from '@/lib/services/captivate';
+import { captivateApi } from '@/lib/integrations/captivate';
 import { zernioApi } from '@/lib/services/zernio';
 import { createClient } from '@/lib/supabase/server';
 
