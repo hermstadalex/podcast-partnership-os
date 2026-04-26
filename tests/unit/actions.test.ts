@@ -100,8 +100,17 @@ function createQueryBuilder(table: string) {
       return { data: null, error: null };
     }),
     single: jest.fn(async () => {
-      if (table === 'episodes' && state.inserted) {
-        return { data: { id: 'episode-1' }, error: null };
+      if (table === 'episodes') {
+        return { 
+          data: { 
+            id: state.filters.id || 'episode-1', 
+            show_id: 'show-1',
+            title: 'Test Episode',
+            description: 'Test Description',
+            media_url: 'http://test.com/audio.mp3'
+          }, 
+          error: null 
+        };
       }
 
       if (table === 'episode_publish_runs' && state.inserted?.provider === 'captivate') {
@@ -147,9 +156,9 @@ describe('Action: dispatchEpisodePublish', () => {
     const result = await dispatchEpisodePublish('episode-1');
 
     expect(result).toBe(true);
-    expect(captivateApi.createEpisode).toHaveBeenCalledWith('captivate-show-1', {
-      title: 'Test Title',
-      description: 'Notes',
+    expect(captivateApi.createEpisode).toHaveBeenCalledWith('44b65556-406f-4a16-8bce-4dd25f0a1de8', {
+      title: 'Test Episode',
+      description: 'Test Description',
       mediaUrl: 'http://test.com/audio.mp3',
     });
     expect(zernioApi.createPost).toHaveBeenCalledWith(
