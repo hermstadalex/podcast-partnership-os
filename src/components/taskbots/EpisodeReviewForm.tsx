@@ -61,12 +61,16 @@ export function EpisodeReviewForm({
         dateString = `${y}-${m}-${d} ${h}:${min}:${s}`;
       }
 
-      await publishEpisodeToCaptivate(episode.id, {
+      const result = await publishEpisodeToCaptivate(episode.id, {
         status,
         date: dateString,
         episodeSeason,
         episodeNumber,
       });
+
+      if (result && !result.success) {
+        throw new Error(result.error);
+      }
 
       setIsComplete(true);
       toast.success(

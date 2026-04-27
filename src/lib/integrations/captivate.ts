@@ -223,7 +223,13 @@ export class CaptivateService {
     if (!res.ok) {
       const errorBody = await res.text().catch(() => '');
       console.error(`[CAPTIVATE] createEpisode failed with ${res.status}:`, errorBody);
-      throw new Error(`Captivate API error: ${res.statusText}`);
+      let errMsg = res.statusText;
+      try {
+        const parsed = JSON.parse(errorBody);
+        if (parsed.message) errMsg = parsed.message;
+        else if (parsed.errors) errMsg = JSON.stringify(parsed.errors);
+      } catch (e) {}
+      throw new Error(`Captivate API error: ${errMsg}`);
     }
 
     return res.json();

@@ -86,7 +86,7 @@ export async function publishEpisodeToCaptivate(
       })
       .eq('id', captivateRunId);
     console.log(`[PIPELINE] Dispatched to Captivate. ShowId: ${testCaptivateShowId}. Status: ${options.status}`);
-    return true;
+    return { success: true };
   } catch (err: unknown) {
     await supabase
       .from('episode_publish_runs')
@@ -97,7 +97,7 @@ export async function publishEpisodeToCaptivate(
         updated_at: new Date().toISOString(),
       })
       .eq('id', captivateRunId);
-    throw new Error(`Captivate publish failed: ${getErrorMessage(err)}`);
+    return { success: false, error: `Captivate publish failed: ${getErrorMessage(err)}` };
   }
 }
 
