@@ -87,7 +87,34 @@ export async function POST(req: Request) {
         // Iterate through parts to find the image part
         for (const part of parts) {
             if (part.inlineData) {
-                outputUrl = `data:${part.inlineData.mimeType || 'image/jpeg'};base64,${part.inlineData.data}`;
+                const base64Data = part.inlineData.data;
+                const outputMimeType = part.inlineData.mimeType || 'image/jpeg';
+                
+                if (!base64Data) {
+                  console.warn("Skipping part: inlineData.data is undefined");
+                  continue;
+                }
+                
+                const buffer = Buffer.from(base64Data, 'base64');
+                const ext = outputMimeType.split('/')[1] || 'jpg';
+                const fileName = `generated-art/${showId}-${format}-${Date.now()}.${ext}`;
+
+                const { error: uploadError } = await supabase.storage
+                  .from('episodes_bucket')
+                  .upload(fileName, buffer, {
+                    contentType: outputMimeType,
+                    upsert: true
+                  });
+
+                if (uploadError) {
+                  throw new Error(`Failed to upload generated art: ${uploadError.message}`);
+                }
+
+                const { data: { publicUrl } } = supabase.storage
+                  .from('episodes_bucket')
+                  .getPublicUrl(fileName);
+
+                outputUrl = publicUrl;
                 break;
             }
         }
