@@ -53,7 +53,7 @@ export async function publishEpisodeToCaptivate(
     let mediaId: string | undefined = undefined;
     if (options.status !== 'Draft' && episode.media_url) {
       // Captivate strictly requires media_id for anything not Draft
-      mediaId = await captivateApi.uploadMedia(episode.show_id, episode.media_url);
+      mediaId = await captivateApi.uploadMedia(targetShow.captivate_show_id!, episode.media_url);
     }
 
     // Build the Captivate payload from the episode record + user scheduling options
