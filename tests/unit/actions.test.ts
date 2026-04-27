@@ -176,8 +176,10 @@ describe('Action: dispatchEpisodePublish', () => {
     expect(result).toBe(true);
     expect(captivateApi.createEpisode).toHaveBeenCalledWith('44b65556-406f-4a16-8bce-4dd25f0a1de8', {
       title: 'Test Episode',
-      description: 'Test Description',
+      shownotes: 'Test Description',
       mediaUrl: 'http://test.com/audio.mp3',
+      status: 'Draft',
+      episodeArt: undefined,
     });
     expect(zernioApi.constructYouTubePayload).toHaveBeenCalled();
     expect(zernioApi.publishEpisode).toHaveBeenCalled();

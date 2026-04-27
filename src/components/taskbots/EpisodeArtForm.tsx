@@ -5,10 +5,10 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 
-import { RefreshCw, Image as ImageIcon, Wand2, Download, Mic, Upload, ExternalLink } from 'lucide-react';
+import { RefreshCw, Image as ImageIcon, Wand2, Download, Mic, Upload, ExternalLink, Podcast, Video } from 'lucide-react';
 import { toast } from 'sonner';
 import { createClient } from '@/lib/supabase/client';
-import { updateShowMetadata, dispatchEpisodePublish } from '@/app/actions';
+import { updateShowMetadata } from '@/app/actions';
 import { useRouter } from 'next/navigation';
 
 type Show = {
@@ -24,10 +24,10 @@ export function EpisodeArtForm({ shows, initialDraft, autoRun }: { shows: Show[]
   const [selectedShowId, setSelectedShowId] = useState<string>(initialDraft?.show_id || '');
   const [title, setTitle] = useState(initialDraft?.title || '');
   const [format, setFormat] = useState('podcast-art');
-  const [generateBoth, setGenerateBoth] = useState(!!initialDraft); 
+  const [generateBoth, setGenerateBoth] = useState(false); 
+  const [publishMode, setPublishMode] = useState<'podcast-only' | 'full'>('podcast-only');
   
   const [isGenerating, setIsGenerating] = useState(false);
-  const [isPublishing, setIsPublishing] = useState(false);
   const [isUploading, setIsUploading] = useState(false);
   
   const [generatedImages, setGeneratedImages] = useState<{ podcast?: string, youtube?: string }>({});
@@ -43,9 +43,20 @@ export function EpisodeArtForm({ shows, initialDraft, autoRun }: { shows: Show[]
       ? activeShow?.youtube_reference_art 
       : activeShow?.podcast_reference_art;
 
+  // When podcast-only mode, force podcast-art format
+  useEffect(() => {
+    if (publishMode === 'podcast-only') {
+      setGenerateBoth(false);
+      setFormat('podcast-art');
+    }
+  }, [publishMode]);
+
+  // Auto-run for pipeline mode (when coming from Episode Creator Wizard)
   useEffect(() => {
     if (autoRun && title && selectedShowId && !autoRunFired.current) {
       autoRunFired.current = true;
+      // In podcast-only mode by default when auto-running
+      setPublishMode('podcast-only');
       handleGenerate();
     }
   }, [autoRun, title, selectedShowId]);
@@ -154,18 +165,10 @@ export function EpisodeArtForm({ shows, initialDraft, autoRun }: { shows: Show[]
     document.body.removeChild(a);
   };
 
-  const handlePublishPipeline = async () => {
+  const handleProceedToReview = () => {
     if (!initialDraft?.id) return;
-    setIsPublishing(true);
-    try {
-      await dispatchEpisodePublish(initialDraft.id);
-      toast.success('Episode successfully dispatched to Captivate & Zernio!');
-      router.push('/');
-    } catch (err: any) {
-      toast.error(`Publishing failed: ${err.message}`);
-    } finally {
-      setIsPublishing(false);
-    }
+    const artUrl = generatedImages.podcast || generatedImages.youtube || '';
+    router.push(`/taskbots/episode-review?episodeId=${initialDraft.id}&publishMode=${publishMode}&artUrl=${encodeURIComponent(artUrl)}`);
   };
 
   return (
@@ -176,12 +179,55 @@ export function EpisodeArtForm({ shows, initialDraft, autoRun }: { shows: Show[]
         <div className="mb-6 border-b border-zinc-800 pb-4">
           <h2 className="text-lg font-bold text-zinc-100 flex items-center">
             <Wand2 className="h-5 w-5 mr-2 text-indigo-400" />
-            Phase 1: Input Parameters
+            Phase 2: Art Generation
           </h2>
           <p className="text-zinc-400 text-sm mt-1">Configure your episode details below to generate specialized art.</p>
         </div>
 
         <div className="space-y-6">
+          {/* Publish Mode Selector */}
+          <div className="space-y-3">
+            <Label>Publish Mode</Label>
+            <div className="gap-3 flex flex-col">
+              <label htmlFor="mode-podcast" className={`flex items-center space-x-3 border ${publishMode === 'podcast-only' ? 'border-indigo-500 bg-indigo-500/10' : 'border-zinc-800 bg-zinc-950'} rounded-md p-3 hover:bg-zinc-900 transition-colors cursor-pointer`}>
+                <input 
+                  type="radio" 
+                  id="mode-podcast" 
+                  name="publishMode" 
+                  value="podcast-only" 
+                  checked={publishMode === 'podcast-only'}
+                  onChange={(e) => setPublishMode(e.target.value as any)}
+                  className="h-4 w-4 text-indigo-600 border-zinc-700 bg-zinc-900 focus:ring-indigo-600 focus:ring-offset-zinc-950" 
+                />
+                <div className="flex-1 flex items-center gap-2">
+                  <Podcast className="h-4 w-4 text-indigo-400" />
+                  <div>
+                    <div className="font-medium text-zinc-200">Podcast Feed Only</div>
+                    <div className="text-xs text-zinc-500">Generate 1:1 art, publish to Captivate only</div>
+                  </div>
+                </div>
+              </label>
+              <label htmlFor="mode-full" className={`flex items-center space-x-3 border ${publishMode === 'full' ? 'border-indigo-500 bg-indigo-500/10' : 'border-zinc-800 bg-zinc-950'} rounded-md p-3 hover:bg-zinc-900 transition-colors cursor-pointer`}>
+                <input 
+                  type="radio" 
+                  id="mode-full" 
+                  name="publishMode" 
+                  value="full" 
+                  checked={publishMode === 'full'}
+                  onChange={(e) => setPublishMode(e.target.value as any)}
+                  className="h-4 w-4 text-indigo-600 border-zinc-700 bg-zinc-900 focus:ring-indigo-600 focus:ring-offset-zinc-950" 
+                />
+                <div className="flex-1 flex items-center gap-2">
+                  <Video className="h-4 w-4 text-red-400" />
+                  <div>
+                    <div className="font-medium text-zinc-200">Full Pipeline (Podcast + YouTube)</div>
+                    <div className="text-xs text-zinc-500">Generate both formats, publish to Captivate & Zernio</div>
+                  </div>
+                </div>
+              </label>
+            </div>
+          </div>
+
           <div className="space-y-3">
             <Label>Target Show</Label>
             <select
@@ -209,58 +255,61 @@ export function EpisodeArtForm({ shows, initialDraft, autoRun }: { shows: Show[]
             />
           </div>
 
-          <div className="space-y-3">
-            <Label>Asset Format (Orientation)</Label>
-            
-            <div className="flex items-center space-x-2 py-2">
-              <input 
-                type="checkbox" 
-                id="generateBoth" 
-                checked={generateBoth}
-                onChange={(e) => setGenerateBoth(e.target.checked)}
-                className="rounded border-zinc-700 bg-zinc-900 text-indigo-600 focus:ring-indigo-600"
-              />
-              <label htmlFor="generateBoth" className="text-sm font-medium text-zinc-300">
-                Generate Pipeline Sequence (Both 1:1 and 16:9 formats)
-              </label>
-            </div>
-
-            {!generateBoth && (
-              <div className="gap-4 flex flex-col">
-                <label htmlFor="youtube" className={`flex items-center space-x-3 border ${format === 'youtube-thumbnail' ? 'border-indigo-500 bg-indigo-500/10' : 'border-zinc-800 bg-zinc-950'} rounded-md p-3 hover:bg-zinc-900 transition-colors cursor-pointer`}>
-                  <input 
-                    type="radio" 
-                    id="youtube" 
-                    name="format" 
-                    value="youtube-thumbnail" 
-                    checked={format === 'youtube-thumbnail'}
-                    onChange={(e) => setFormat(e.target.value)}
-                    className="h-4 w-4 text-indigo-600 border-zinc-700 bg-zinc-900 focus:ring-indigo-600 focus:ring-offset-zinc-950" 
-                  />
-                  <div className="flex-1">
-                    <div className="font-medium text-zinc-200">YouTube Thumbnail</div>
-                    <div className="text-xs text-zinc-500">16:9 Landscape</div>
-                  </div>
-                </label>
-                
-                <label htmlFor="podcast" className={`flex items-center space-x-3 border ${format === 'podcast-art' ? 'border-indigo-500 bg-indigo-500/10' : 'border-zinc-800 bg-zinc-950'} rounded-md p-3 hover:bg-zinc-900 transition-colors cursor-pointer`}>
-                  <input 
-                    type="radio" 
-                    id="podcast" 
-                    name="format" 
-                    value="podcast-art" 
-                    checked={format === 'podcast-art'}
-                    onChange={(e) => setFormat(e.target.value)}
-                    className="h-4 w-4 text-indigo-600 border-zinc-700 bg-zinc-900 focus:ring-indigo-600 focus:ring-offset-zinc-950" 
-                  />
-                  <div className="flex-1">
-                    <div className="font-medium text-zinc-200">Podcast Square Art</div>
-                    <div className="text-xs text-zinc-500">1:1 Square</div>
-                  </div>
+          {/* Art Format Selection - only show when full pipeline mode */}
+          {publishMode === 'full' && (
+            <div className="space-y-3">
+              <Label>Asset Format (Orientation)</Label>
+              
+              <div className="flex items-center space-x-2 py-2">
+                <input 
+                  type="checkbox" 
+                  id="generateBoth" 
+                  checked={generateBoth}
+                  onChange={(e) => setGenerateBoth(e.target.checked)}
+                  className="rounded border-zinc-700 bg-zinc-900 text-indigo-600 focus:ring-indigo-600"
+                />
+                <label htmlFor="generateBoth" className="text-sm font-medium text-zinc-300">
+                  Generate Pipeline Sequence (Both 1:1 and 16:9 formats)
                 </label>
               </div>
-            )}
-          </div>
+
+              {!generateBoth && (
+                <div className="gap-4 flex flex-col">
+                  <label htmlFor="youtube" className={`flex items-center space-x-3 border ${format === 'youtube-thumbnail' ? 'border-indigo-500 bg-indigo-500/10' : 'border-zinc-800 bg-zinc-950'} rounded-md p-3 hover:bg-zinc-900 transition-colors cursor-pointer`}>
+                    <input 
+                      type="radio" 
+                      id="youtube" 
+                      name="format" 
+                      value="youtube-thumbnail" 
+                      checked={format === 'youtube-thumbnail'}
+                      onChange={(e) => setFormat(e.target.value)}
+                      className="h-4 w-4 text-indigo-600 border-zinc-700 bg-zinc-900 focus:ring-indigo-600 focus:ring-offset-zinc-950" 
+                    />
+                    <div className="flex-1">
+                      <div className="font-medium text-zinc-200">YouTube Thumbnail</div>
+                      <div className="text-xs text-zinc-500">16:9 Landscape</div>
+                    </div>
+                  </label>
+                  
+                  <label htmlFor="podcast" className={`flex items-center space-x-3 border ${format === 'podcast-art' ? 'border-indigo-500 bg-indigo-500/10' : 'border-zinc-800 bg-zinc-950'} rounded-md p-3 hover:bg-zinc-900 transition-colors cursor-pointer`}>
+                    <input 
+                      type="radio" 
+                      id="podcast" 
+                      name="format" 
+                      value="podcast-art" 
+                      checked={format === 'podcast-art'}
+                      onChange={(e) => setFormat(e.target.value)}
+                      className="h-4 w-4 text-indigo-600 border-zinc-700 bg-zinc-900 focus:ring-indigo-600 focus:ring-offset-zinc-950" 
+                    />
+                    <div className="flex-1">
+                      <div className="font-medium text-zinc-200">Podcast Square Art</div>
+                      <div className="text-xs text-zinc-500">1:1 Square</div>
+                    </div>
+                  </label>
+                </div>
+              )}
+            </div>
+          )}
 
           {!activeShow && (
              <div className="p-4 rounded-md border border-zinc-800 bg-zinc-950/50 text-sm text-zinc-400">
@@ -318,9 +367,9 @@ export function EpisodeArtForm({ shows, initialDraft, autoRun }: { shows: Show[]
         <div className="mb-6 border-b border-zinc-800 pb-4">
           <h2 className="text-lg font-bold text-zinc-100 flex items-center">
             <ImageIcon className="h-5 w-5 mr-2 text-indigo-400" />
-            Phase 3: Output Render
+            Output Render
           </h2>
-          <p className="text-zinc-400 text-sm mt-1">Review the final generated assets before publishing.</p>
+          <p className="text-zinc-400 text-sm mt-1">Review the final generated assets before proceeding to review.</p>
         </div>
 
         <div className="flex-1 flex flex-col items-center justify-center min-h-[300px] space-y-6">
@@ -364,26 +413,27 @@ export function EpisodeArtForm({ shows, initialDraft, autoRun }: { shows: Show[]
           {!isGenerating && !generatedImages.podcast && !generatedImages.youtube && (
             <div className="flex flex-col items-center justify-center text-zinc-500 space-y-4 h-full">
               <ImageIcon className="h-16 w-16 opacity-20" />
-              <p>Awaiting Phase 1 Input to run production model.</p>
+              <p>Awaiting Phase 2 Input to run production model.</p>
             </div>
           )}
         </div>
 
-        {/* PIPELINE DISPATCH COMMAND */}
+        {/* PROCEED TO REVIEW */}
         {initialDraft && (generatedImages.podcast || generatedImages.youtube) && !isGenerating && (
           <div className="mt-8 pt-6 border-t border-zinc-800">
             <div className="bg-indigo-950/30 border border-indigo-500/20 rounded-lg p-4 mb-4">
               <h3 className="font-semibold text-indigo-300 text-sm flex items-center">
-                <ExternalLink className="h-4 w-4 mr-2" /> Pipeline Action Required
+                <ExternalLink className="h-4 w-4 mr-2" /> Next Step: Final Review
               </h3>
-              <p className="text-zinc-400 text-xs mt-1">You have an unpublished Episode Draft loaded from the Publisher Wizard. After approving your visual assets above, finalize to dispatch to Captivate & Zernio.</p>
+              <p className="text-zinc-400 text-xs mt-1">
+                Review your episode details, set season/episode numbers, and schedule publishing on the next screen.
+              </p>
             </div>
             <Button 
-              onClick={handlePublishPipeline} 
-              disabled={isPublishing} 
+              onClick={handleProceedToReview} 
               className="w-full bg-emerald-600 hover:bg-emerald-700 py-6 text-white font-bold"
             >
-              {isPublishing ? 'Dispatching...' : 'Complete Publishing Pipeline'}
+              Proceed to Final Review
             </Button>
           </div>
         )}

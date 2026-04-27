@@ -104,3 +104,36 @@ export async function getEpisodeDraft(episodeId: string) {
     .single();
   return episode;
 }
+
+export async function updateEpisodeDraft(
+  episodeId: string,
+  updates: {
+    title?: string;
+    description?: string;
+    episode_art?: string;
+    episode_season?: number;
+    episode_number?: number;
+  }
+) {
+  const supabase = await createClient();
+  const { data: authData } = await supabase.auth.getUser();
+  const user = authData.user;
+
+  if (!user) {
+    throw new Error('Unauthorized');
+  }
+
+  const { error } = await supabase
+    .from('episodes')
+    .update({
+      ...updates,
+      updated_at: new Date().toISOString(),
+    })
+    .eq('id', episodeId);
+
+  if (error) {
+    throw new Error(`Failed to update episode draft: ${error.message}`);
+  }
+
+  return true;
+}

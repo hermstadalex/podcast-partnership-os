@@ -7,8 +7,15 @@ import {
 
 export type CaptivateEpisodePayload = {
   title: string;
-  description: string;
-  mediaUrl: string;
+  shownotes: string;          // HTML content, max 4000 chars
+  mediaUrl?: string;
+  status: 'Draft' | 'Scheduled' | 'Published';
+  date?: string;               // 'YYYY-MM-DD HH:mm:ss' format for scheduling
+  episodeSeason?: number;
+  episodeNumber?: number;
+  episodeArt?: string;         // URL to episode-specific artwork
+  episodeType?: 'full' | 'trailer' | 'bonus';
+  summary?: string;            // Apple Podcasts summary, max 4000 chars
 };
 
 export type CaptivateShowMetadataUpdate = {
@@ -184,10 +191,25 @@ export class CaptivateService {
     const formData = new FormData();
     formData.append('shows_id', showId);
     formData.append('title', data.title);
-    formData.append('shownotes', data.description);
-    formData.append('media_id', ''); 
-    formData.append('status', 'Draft');
-    formData.append('episode_type', 'full');
+    formData.append('shownotes', data.shownotes);
+    formData.append('status', data.status || 'Draft');
+    formData.append('episode_type', data.episodeType || 'full');
+    
+    if (data.date) {
+      formData.append('date', data.date);
+    }
+    if (data.episodeSeason !== undefined && data.episodeSeason !== null) {
+      formData.append('episode_season', String(data.episodeSeason));
+    }
+    if (data.episodeNumber !== undefined && data.episodeNumber !== null) {
+      formData.append('episode_number', String(data.episodeNumber));
+    }
+    if (data.episodeArt) {
+      formData.append('episode_art', data.episodeArt);
+    }
+    if (data.summary) {
+      formData.append('summary', data.summary);
+    }
     
     const res = await fetch(`${this.baseUrl}/episodes`, {
       method: 'POST',

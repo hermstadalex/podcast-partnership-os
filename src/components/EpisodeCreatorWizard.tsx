@@ -3,7 +3,6 @@
 import { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Textarea } from '@/components/ui/textarea';
 import { useSupabaseUpload } from '@/hooks/use-supabase-upload';
 import { Dropzone, DropzoneEmptyState, DropzoneContent } from '@/components/dropzone';
 import {
@@ -13,7 +12,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog';
-import { Loader2, Sparkles, Wand2 } from 'lucide-react';
+import { Loader2, Sparkles, Wand2, Code, Eye } from 'lucide-react';
 import { toast } from 'sonner';
 import { EpisodeTracker } from './EpisodeTracker';
 import { generateEpisodeAssets, saveEpisodeDraft, getShows } from '@/app/actions';
@@ -29,6 +28,7 @@ export function EpisodeCreatorWizard({ isOpen, onClose, showId }: { isOpen: bool
   const [fileUrl, setFileUrl] = useState<string>('');
   const [title, setTitle] = useState('');
   const [description, setDescription] = useState('');
+  const [previewMode, setPreviewMode] = useState<'source' | 'preview'>('preview');
   
   const router = useRouter();
 
@@ -99,6 +99,7 @@ export function EpisodeCreatorWizard({ isOpen, onClose, showId }: { isOpen: bool
     setFileUrl('');
     setTitle('');
     setDescription('');
+    setPreviewMode('preview');
     uploadProps.setFiles([]);
     uploadProps.setErrors([]);
     setEffectiveShowId(showId);
@@ -107,7 +108,7 @@ export function EpisodeCreatorWizard({ isOpen, onClose, showId }: { isOpen: bool
 
   return (
     <Dialog open={isOpen} onOpenChange={(open) => !open && reset()}>
-      <DialogContent className="sm:max-w-[600px] max-h-[85vh] overflow-y-auto bg-zinc-950 border-zinc-800 text-zinc-50">
+      <DialogContent className="sm:max-w-[800px] max-h-[85vh] overflow-y-auto bg-zinc-950 border-zinc-800 text-zinc-50">
         <DialogHeader>
           <DialogTitle className="text-xl flex items-center gap-2">
             <Sparkles className="w-5 h-5 text-indigo-400" />
@@ -182,13 +183,59 @@ export function EpisodeCreatorWizard({ isOpen, onClose, showId }: { isOpen: bool
                 />
               </div>
 
+              {/* HTML Shownotes Editor */}
               <div className="space-y-2">
-                <label className="text-sm font-medium text-zinc-300">AI Shownotes & Description</label>
-                <Textarea 
-                  value={description} 
-                  onChange={(e) => setDescription(e.target.value)}
-                  className="bg-zinc-900 border-zinc-800 focus-visible:ring-indigo-500 resize-none min-h-[150px] overflow-y-auto"
-                />
+                <div className="flex items-center justify-between">
+                  <label className="text-sm font-medium text-zinc-300">AI Shownotes (HTML)</label>
+                  <div className="flex items-center bg-zinc-900 border border-zinc-800 rounded-md overflow-hidden">
+                    <button
+                      onClick={() => setPreviewMode('source')}
+                      className={`px-3 py-1.5 text-xs font-medium flex items-center gap-1.5 transition-colors ${
+                        previewMode === 'source' 
+                          ? 'bg-indigo-600 text-white' 
+                          : 'text-zinc-400 hover:text-zinc-200'
+                      }`}
+                    >
+                      <Code className="w-3 h-3" />
+                      Source
+                    </button>
+                    <button
+                      onClick={() => setPreviewMode('preview')}
+                      className={`px-3 py-1.5 text-xs font-medium flex items-center gap-1.5 transition-colors ${
+                        previewMode === 'preview' 
+                          ? 'bg-indigo-600 text-white' 
+                          : 'text-zinc-400 hover:text-zinc-200'
+                      }`}
+                    >
+                      <Eye className="w-3 h-3" />
+                      Preview
+                    </button>
+                  </div>
+                </div>
+                
+                {previewMode === 'source' ? (
+                  <textarea 
+                    value={description} 
+                    onChange={(e) => setDescription(e.target.value)}
+                    className="w-full bg-zinc-900 border border-zinc-800 rounded-md p-3 text-sm font-mono text-zinc-200 focus:outline-none focus:ring-2 focus:ring-indigo-500 resize-none min-h-[250px] overflow-y-auto"
+                    spellCheck={false}
+                  />
+                ) : (
+                  <div 
+                    className="w-full bg-zinc-900 border border-zinc-800 rounded-md p-4 min-h-[250px] max-h-[400px] overflow-y-auto prose prose-invert prose-sm max-w-none
+                      prose-headings:text-zinc-100 prose-headings:font-semibold prose-headings:mt-4 prose-headings:mb-2
+                      prose-p:text-zinc-300 prose-p:leading-relaxed
+                      prose-li:text-zinc-300
+                      prose-table:border-zinc-700 prose-th:bg-zinc-800 prose-th:text-zinc-200 prose-th:px-3 prose-th:py-2 prose-th:text-left prose-th:border prose-th:border-zinc-700
+                      prose-td:px-3 prose-td:py-2 prose-td:border prose-td:border-zinc-700 prose-td:text-zinc-300
+                      prose-a:text-indigo-400 prose-strong:text-zinc-100"
+                    dangerouslySetInnerHTML={{ __html: description || '<p class="text-zinc-500 italic">No shownotes generated yet.</p>' }}
+                  />
+                )}
+                
+                <p className="text-xs text-zinc-500">
+                  {description.length}/4000 characters · HTML rendered for Captivate podcast feed
+                </p>
               </div>
 
               <div className="flex items-center justify-between pt-4">

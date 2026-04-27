@@ -10,10 +10,12 @@ export {
   generateVisualAssets, 
   saveEpisodeDraft, 
   getEpisodes, 
-  getEpisodeDraft 
+  getEpisodeDraft,
+  updateEpisodeDraft
 } from '@/lib/actions/episode-actions';
 
 export { 
   dispatchEpisodePublish, 
-  getSubmissionStatus 
+  getSubmissionStatus,
+  publishEpisodeToCaptivate
 } from '@/lib/actions/publish-actions';
