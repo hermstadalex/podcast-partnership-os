@@ -37,15 +37,13 @@ export function EpisodeReviewForm({
   const handleSubmit = async () => {
     setIsSubmitting(true);
     try {
-      // Save art URL to episode if we have one
-      if (displayArt && displayArt !== episode.episode_art) {
-        await updateEpisodeDraft(episode.id, {
-          title,
-          episode_art: displayArt,
-          episode_season: episodeSeason,
-          episode_number: episodeNumber,
-        });
-      }
+      // Always save updated metadata before publishing
+      await updateEpisodeDraft(episode.id, {
+        title,
+        ...(displayArt && displayArt !== episode.episode_art ? { episode_art: displayArt } : {}),
+        episode_season: episodeSeason,
+        episode_number: episodeNumber,
+      });
 
       // Build the date string in Captivate's format: 'YYYY-MM-DD HH:mm:ss'
       let dateString: string | undefined;

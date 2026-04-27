@@ -56,11 +56,12 @@ export async function generateEpisodeAssetsWithGemini(mediaUrl: string): Promise
     const prompt = `You are an elite podcast producer. Listen to the provided audio/video track.
 Your goal is to extract the core themes and produce a highly engaging Title and Description.
 - The Title must be under 60 characters, "hooky", and maximize CTR.
-- The Description (shownotes) must be formatted as clean HTML suitable for podcast RSS feeds (max 4000 characters).
+- The Description (shownotes) must be formatted as clean HTML suitable for podcast RSS feeds.
+- CRITICAL INSTRUCTION: The entire HTML output for the description MUST BE UNDER 3000 CHARACTERS. Be extremely concise. If you exceed 3000 characters, the system will fail.
   - Use <h2> for section headings (e.g. "Episode Summary", "Key Takeaways", "Timestamps").
   - Use <p> for paragraphs.
-  - Use <ul> and <li> for bullet lists.
-  - Use an HTML <table> with columns "Timestamp" and "Topic" for the timestamped table of contents.
+  - Use <ul> and <li> for lists.
+  - Use a basic HTML <table> for timestamps (e.g. <tr><td>[00:00]</td><td>Topic</td></tr>).
   - Do NOT include <html>, <head>, <body>, or <style> tags. Only include inner content markup.
   - Do NOT use markdown. Output only valid HTML elements.
 Output as a JSON object strictly matching this schema:
