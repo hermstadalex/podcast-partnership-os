@@ -190,8 +190,9 @@ export class CaptivateService {
     
     const formData = new FormData();
     formData.append('shows_id', showId);
-    formData.append('title', data.title);
-    formData.append('shownotes', data.shownotes);
+    formData.append('title', data.title.substring(0, 255));
+    formData.append('shownotes', data.shownotes.substring(0, 4000));
+    formData.append('media_id', ''); // Required by API even if empty
     formData.append('status', data.status || 'Draft');
     formData.append('episode_type', data.episodeType || 'full');
     
@@ -220,6 +221,8 @@ export class CaptivateService {
     });
 
     if (!res.ok) {
+      const errorBody = await res.text().catch(() => '');
+      console.error(`[CAPTIVATE] createEpisode failed with ${res.status}:`, errorBody);
       throw new Error(`Captivate API error: ${res.statusText}`);
     }
 
