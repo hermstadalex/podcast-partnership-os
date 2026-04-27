@@ -28,76 +28,80 @@ export async function publishEpisodeToCaptivate(
     episodeNumber?: number;
   }
 ) {
-  const supabase = await createClient();
-  const { data: authData } = await supabase.auth.getUser();
-  const user = authData.user;
-
-  if (!user) {
-    throw new Error('Unauthorized');
-  }
-
-  const { data: episode, error: episodeError } = await supabase
-    .from('episodes')
-    .select('*')
-    .eq('id', episodeId)
-    .single();
-
-  if (episodeError || !episode) {
-    throw new Error('Episode draft not found.');
-  }
-
-  const targetShow = await resolveAuthorizedShow(supabase, user, episode.show_id);
-
-  // Build the Captivate payload from the episode record + user scheduling options
-  const captivatePayload: CaptivateEpisodePayload = {
-    title: episode.title,
-    shownotes: episode.description || '',
-    mediaUrl: episode.media_url,
-    status: options.status,
-    date: options.date,
-    episodeSeason: options.episodeSeason,
-    episodeNumber: options.episodeNumber,
-    episodeArt: episode.episode_art || undefined,
-    episodeType: 'full',
-  };
-
-  // Update episode record with scheduling metadata
-  await supabase
-    .from('episodes')
-    .update({
-      episode_season: options.episodeSeason || null,
-      episode_number: options.episodeNumber || null,
-      scheduled_at: options.date ? new Date(options.date).toISOString() : null,
-      updated_at: new Date().toISOString(),
-    })
-    .eq('id', episodeId);
-
-  const captivateRunId = await createPublishRun(supabase, episodeId, 'captivate', captivatePayload);
-
   try {
-    const testCaptivateShowId = "44b65556-406f-4a16-8bce-4dd25f0a1de8";
-    await captivateApi.createEpisode(testCaptivateShowId, captivatePayload);
+    const supabase = await createClient();
+    const { data: authData } = await supabase.auth.getUser();
+    const user = authData.user;
+
+    if (!user) {
+      throw new Error('Unauthorized');
+    }
+
+    const { data: episode, error: episodeError } = await supabase
+      .from('episodes')
+      .select('*')
+      .eq('id', episodeId)
+      .single();
+
+    if (episodeError || !episode) {
+      throw new Error('Episode draft not found.');
+    }
+
+    const targetShow = await resolveAuthorizedShow(supabase, user, episode.show_id);
+
+    // Build the Captivate payload from the episode record + user scheduling options
+    const captivatePayload: CaptivateEpisodePayload = {
+      title: episode.title,
+      shownotes: episode.description || '',
+      mediaUrl: episode.media_url,
+      status: options.status,
+      date: options.date,
+      episodeSeason: options.episodeSeason,
+      episodeNumber: options.episodeNumber,
+      episodeArt: episode.episode_art || undefined,
+      episodeType: 'full',
+    };
+
+    // Update episode record with scheduling metadata
     await supabase
-      .from('episode_publish_runs')
+      .from('episodes')
       .update({
-        status: 'Dispatched',
-        completed_at: new Date().toISOString(),
+        episode_season: options.episodeSeason || null,
+        episode_number: options.episodeNumber || null,
+        scheduled_at: options.date ? new Date(options.date).toISOString() : null,
         updated_at: new Date().toISOString(),
       })
-      .eq('id', captivateRunId);
-    console.log(`[PIPELINE] Dispatched to Captivate. ShowId: ${testCaptivateShowId}. Status: ${options.status}`);
-    return { success: true };
+      .eq('id', episodeId);
+
+    const captivateRunId = await createPublishRun(supabase, episodeId, 'captivate', captivatePayload);
+
+    try {
+      const testCaptivateShowId = "44b65556-406f-4a16-8bce-4dd25f0a1de8";
+      await captivateApi.createEpisode(testCaptivateShowId, captivatePayload);
+      await supabase
+        .from('episode_publish_runs')
+        .update({
+          status: 'Dispatched',
+          completed_at: new Date().toISOString(),
+          updated_at: new Date().toISOString(),
+        })
+        .eq('id', captivateRunId);
+      console.log(`[PIPELINE] Dispatched to Captivate. ShowId: ${testCaptivateShowId}. Status: ${options.status}`);
+      return { success: true };
+    } catch (apiErr: unknown) {
+      await supabase
+        .from('episode_publish_runs')
+        .update({
+          status: 'Failed',
+          error_message: getErrorMessage(apiErr),
+          completed_at: new Date().toISOString(),
+          updated_at: new Date().toISOString(),
+        })
+        .eq('id', captivateRunId);
+      throw apiErr; // rethrow to outer catch block
+    }
   } catch (err: unknown) {
-    await supabase
-      .from('episode_publish_runs')
-      .update({
-        status: 'Failed',
-        error_message: getErrorMessage(err),
-        completed_at: new Date().toISOString(),
-        updated_at: new Date().toISOString(),
-      })
-      .eq('id', captivateRunId);
-    return { success: false, error: `Captivate publish failed: ${getErrorMessage(err)}` };
+    return { success: false, error: getErrorMessage(err) };
   }
 }
 
