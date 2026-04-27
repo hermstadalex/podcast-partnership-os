@@ -9,6 +9,7 @@ export type CaptivateEpisodePayload = {
   title: string;
   shownotes: string;          // HTML content, max 4000 chars
   mediaUrl?: string;
+  mediaId?: string;
   status: 'Draft' | 'Scheduled' | 'Published';
   date?: string;               // 'YYYY-MM-DD HH:mm:ss' format for scheduling
   episodeSeason?: number;
@@ -185,6 +186,66 @@ export class CaptivateService {
     return putRes.json();
   }
 
+  async uploadMedia(showId: string, mediaUrl: string): Promise<string> {
+    await this.authenticate();
+    
+    console.log(`[CAPTIVATE] Downloading media from Supabase: ${mediaUrl}`);
+    const mediaResponse = await fetch(mediaUrl);
+    if (!mediaResponse.ok) {
+      throw new Error(`Failed to download media from Supabase: ${mediaResponse.statusText}`);
+    }
+    
+    // Read the arrayBuffer instead of blob to ensure we can recreate a clean Blob
+    const arrayBuffer = await mediaResponse.arrayBuffer();
+    
+    // Force an audio MIME type because Supabase often defaults to application/octet-stream,
+    // which the Captivate API strictly rejects with a 400 error.
+    const fileBlob = new Blob([arrayBuffer], { type: 'audio/mpeg' });
+    
+    const formData = new FormData();
+    const filename = mediaUrl.split('/').pop() || 'episode.mp3';
+    
+    // Ensure filename ends with .mp3 for Captivate's internal parser
+    const finalFilename = filename.endsWith('.mp3') || filename.endsWith('.m4a') ? filename : `${filename}.mp3`;
+    
+    formData.append('file', fileBlob, finalFilename);
+
+    console.log(`[CAPTIVATE] Uploading media to Captivate for show ${showId}, filename: ${finalFilename}`);
+    const uploadRes = await fetch(`${this.baseUrl}/shows/${showId}/media`, {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${this.token}`,
+      },
+      body: formData
+    });
+
+    if (!uploadRes.ok) {
+      const errText = await uploadRes.text().catch(() => '');
+      console.error("[CAPTIVATE] Media upload rejected:", uploadRes.status, errText);
+      
+      // Try to extract a clean JSON error message if possible
+      let cleanError = errText;
+      try {
+        const parsed = JSON.parse(errText);
+        if (parsed.error) cleanError = JSON.stringify(parsed.error);
+        if (parsed.message) cleanError = parsed.message;
+      } catch (e) { }
+      
+      throw new Error(`Captivate media upload failed: ${uploadRes.status} ${cleanError}`);
+    }
+
+    const uploadData = await uploadRes.json();
+    console.log("[CAPTIVATE] Media upload successful!", JSON.stringify(uploadData).substring(0, 100));
+    
+    // Depending on Captivate's undocumented payload structure:
+    const mediaId = uploadData?.media?.id || uploadData?.id || uploadData?.new_media_id || uploadData?.media_id;
+    if (!mediaId) {
+       console.error("[CAPTIVATE] Media upload successful but no media_id found:", JSON.stringify(uploadData).substring(0, 300));
+       throw new Error(`Could not parse media_id from response: ${JSON.stringify(uploadData).substring(0, 200)}`);
+    }
+    return mediaId;
+  }
+
   async createEpisode(showId: string, data: CaptivateEpisodePayload) {
     await this.authenticate();
     
@@ -192,7 +253,7 @@ export class CaptivateService {
     formData.append('shows_id', showId);
     formData.append('title', data.title.substring(0, 255));
     formData.append('shownotes', data.shownotes.substring(0, 4000));
-    formData.append('media_id', ''); // Required by API even if empty
+    formData.append('media_id', data.mediaId || ''); // Required by API even if empty
     formData.append('status', data.status || 'Draft');
     formData.append('episode_type', data.episodeType || 'full');
     
@@ -226,9 +287,18 @@ export class CaptivateService {
       let errMsg = res.statusText;
       try {
         const parsed = JSON.parse(errorBody);
-        if (parsed.message) errMsg = parsed.message;
-        else if (parsed.errors) errMsg = JSON.stringify(parsed.errors);
-      } catch (e) {}
+        if (parsed.message && parsed.errors) {
+          errMsg = `${parsed.message}: ${JSON.stringify(parsed.errors)}`;
+        } else if (parsed.message) {
+          errMsg = parsed.message;
+        } else if (parsed.errors) {
+          errMsg = JSON.stringify(parsed.errors);
+        } else {
+          errMsg = errorBody.substring(0, 200);
+        }
+      } catch (e) {
+        errMsg = errorBody ? errorBody.substring(0, 200) : res.statusText;
+      }
       throw new Error(`Captivate API error: ${errMsg}`);
     }
 

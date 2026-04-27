@@ -11,6 +11,7 @@ import {
 import { getErrorMessage } from '@/lib/utils';
 import type { CaptivateEpisodePayload } from '@/lib/integrations/captivate';
 
+
 export async function getSubmissionStatus(postId: string) {
   return await zernioApi.getSubmissionStatus(postId);
 }
@@ -49,11 +50,18 @@ export async function publishEpisodeToCaptivate(
 
     const targetShow = await resolveAuthorizedShow(supabase, user, episode.show_id);
 
+    let mediaId: string | undefined = undefined;
+    if (options.status !== 'Draft' && episode.media_url) {
+      // Captivate strictly requires media_id for anything not Draft
+      mediaId = await captivateApi.uploadMedia(episode.show_id, episode.media_url);
+    }
+
     // Build the Captivate payload from the episode record + user scheduling options
     const captivatePayload: CaptivateEpisodePayload = {
       title: episode.title,
       shownotes: episode.description || '',
       mediaUrl: episode.media_url,
+      mediaId,
       status: options.status,
       date: options.date,
       episodeSeason: options.episodeSeason,

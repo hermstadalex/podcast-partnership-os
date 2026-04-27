@@ -7,6 +7,8 @@ export const metadata = {
   title: 'Episode Review | Taskbots | Podcast Partnership OS',
 };
 
+export const maxDuration = 60;
+
 export default async function EpisodeReviewPage({
   searchParams,
 }: {
