@@ -131,13 +131,20 @@ export function EpisodeReviewForm({
             <span className="text-xs text-zinc-500">{description.length}/4000 chars</span>
           </div>
           <div 
-            className="bg-zinc-950 border border-zinc-800 rounded-md p-5 min-h-[200px] max-h-[400px] overflow-y-auto prose prose-invert prose-sm max-w-none
-              prose-headings:text-zinc-100 prose-headings:font-semibold prose-headings:mt-4 prose-headings:mb-2
-              prose-p:text-zinc-300 prose-p:leading-relaxed
-              prose-li:text-zinc-300
-              prose-table:border-zinc-700 prose-th:bg-zinc-800 prose-th:text-zinc-200 prose-th:px-3 prose-th:py-2 prose-th:text-left prose-th:border prose-th:border-zinc-700
-              prose-td:px-3 prose-td:py-2 prose-td:border prose-td:border-zinc-700 prose-td:text-zinc-300
-              prose-a:text-indigo-400 prose-strong:text-zinc-100"
+            className="bg-zinc-950 border border-zinc-800 rounded-md p-5 min-h-[200px] max-h-[400px] overflow-y-auto max-w-none text-sm text-zinc-300
+              [&_h1]:text-zinc-100 [&_h1]:font-bold [&_h1]:text-xl [&_h1]:mt-6 [&_h1]:mb-3
+              [&_h2]:text-zinc-100 [&_h2]:font-semibold [&_h2]:text-lg [&_h2]:mt-5 [&_h2]:mb-2
+              [&_h3]:text-zinc-100 [&_h3]:font-semibold [&_h3]:mt-4 [&_h3]:mb-2
+              [&_p]:text-zinc-300 [&_p]:leading-relaxed [&_p]:mb-4
+              [&_ul]:list-disc [&_ul]:pl-5 [&_ul]:mb-4 [&_ul]:space-y-1
+              [&_ol]:list-decimal [&_ol]:pl-5 [&_ol]:mb-4 [&_ol]:space-y-1
+              [&_li]:text-zinc-300
+              [&_table]:w-full [&_table]:border-collapse [&_table]:border [&_table]:border-zinc-700 [&_table]:mb-4
+              [&_th]:bg-zinc-800 [&_th]:text-zinc-200 [&_th]:px-3 [&_th]:py-2 [&_th]:text-left [&_th]:border [&_th]:border-zinc-700 [&_th]:font-medium
+              [&_td]:px-3 [&_td]:py-2 [&_td]:border [&_td]:border-zinc-700 [&_td]:text-zinc-300
+              [&_a]:text-indigo-400 [&_a]:underline
+              [&_strong]:text-zinc-100 [&_strong]:font-semibold
+              [&_b]:text-zinc-100 [&_b]:font-semibold"
             dangerouslySetInnerHTML={{ __html: description || '<p class="text-zinc-500 italic">No shownotes available.</p>' }}
           />
         </div>
