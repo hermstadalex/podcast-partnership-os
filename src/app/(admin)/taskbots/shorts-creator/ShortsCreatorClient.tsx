@@ -48,7 +48,7 @@ export function ShortsCreatorClient({ episode }: { episode: any }) {
   const pollForCompletion = async (id: string) => {
     try {
       const res = await pollShortsTask(id, episode.id);
-      if (res.status === 'completed' || res.status === 'done') {
+      if (res.status === 'ready' || res.status === 'completed' || res.status === 'done') {
         setFolderId(res.folderId!);
         loadShorts(res.folderId!);
         setPhase('REVIEW');
@@ -91,7 +91,7 @@ export function ShortsCreatorClient({ episode }: { episode: any }) {
   const pollForExport = async (eId: string, short: any) => {
     try {
       const res = await pollExportStatus(folderId!, short.id, eId);
-      if (res.status === 'completed' || res.status === 'done') {
+      if (res.status === 'ready' || res.status === 'completed' || res.status === 'done') {
         setPhase('PUBLISHING');
         toast.success("Export complete! Publishing to platforms...");
         await doPublish(short.id, res.src_url, short.name);

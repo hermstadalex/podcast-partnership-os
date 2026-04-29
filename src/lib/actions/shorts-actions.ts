@@ -27,7 +27,7 @@ export async function startShortsGeneration(episodeId: string) {
 export async function pollShortsTask(taskId: string, episodeId: string) {
   const taskStatus = await klapApi.getTaskStatus(taskId);
   
-  if (taskStatus.status === 'completed' || taskStatus.status === 'done') {
+  if (taskStatus.status === 'ready' || taskStatus.status === 'completed' || taskStatus.status === 'done') {
     const folderId = taskStatus.output_id || taskStatus.project_group_id || taskStatus.folder_id;
     
     if (folderId) {

@@ -1,6 +1,6 @@
 import 'server-only';
 
-const API_URL = "https://api.klap.video/v2";
+const API_URL = "https://api.klap.app/v2";
 
 interface KlapEditingOptions {
   intro_title?: boolean;
