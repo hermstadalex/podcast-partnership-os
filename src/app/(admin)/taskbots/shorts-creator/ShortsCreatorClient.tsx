@@ -146,23 +146,29 @@ export function ShortsCreatorClient({ episode }: { episode: any }) {
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
           {shorts.map((short) => (
             <div key={short.id} className="border border-zinc-800 rounded-xl bg-zinc-900/50 overflow-hidden flex flex-col">
-              <div className="aspect-[9/16] w-full bg-black relative">
-                <iframe 
-                  src={`https://klap.app/player/${short.id}`}
-                  className="absolute inset-0 w-full h-full border-0"
-                  allowFullScreen
-                />
+              {/* Visual Header */}
+              <div className="bg-gradient-to-br from-fuchsia-950/60 to-zinc-900 p-6 flex flex-col items-center justify-center min-h-[180px] border-b border-zinc-800">
+                <div className="w-16 h-16 rounded-full bg-fuchsia-500/20 border border-fuchsia-500/30 flex items-center justify-center mb-3">
+                  <Video className="w-7 h-7 text-fuchsia-400" />
+                </div>
+                <h4 className="font-semibold text-zinc-100 text-center text-sm leading-snug px-2">{short.name || 'Generated Short'}</h4>
               </div>
               <div className="p-4 flex-1 flex flex-col justify-between space-y-4">
-                <div>
-                  <h4 className="font-medium text-zinc-100">{short.name || 'Generated Short'}</h4>
-                  <div className="mt-1 flex items-center gap-2">
-                    <span className="text-xs bg-fuchsia-500/20 text-fuchsia-400 px-2 py-1 rounded border border-fuchsia-500/30">
-                      Score: {short.virality_score}/100
+                <div className="space-y-3">
+                  {/* Virality Score */}
+                  <div className="flex items-center gap-2">
+                    <span className="text-xs bg-fuchsia-500/20 text-fuchsia-400 px-2 py-1 rounded border border-fuchsia-500/30 font-semibold">
+                      Virality: {Math.round((short.virality_score || 0) * 100)}%
                     </span>
                   </div>
+                  {/* Score Explanation */}
+                  {short.virality_score_explanation && (
+                    <p className="text-xs text-zinc-400 leading-relaxed line-clamp-3">
+                      {short.virality_score_explanation}
+                    </p>
+                  )}
                 </div>
-                <div className="grid grid-cols-2 gap-2">
+                <div className="grid grid-cols-2 gap-2 pt-2">
                   <Button 
                     variant="outline" 
                     className="border-zinc-700 hover:bg-zinc-800 text-zinc-300"
@@ -176,7 +182,7 @@ export function ShortsCreatorClient({ episode }: { episode: any }) {
                     onClick={() => handleApprove(short)}
                   >
                     <CheckCircle2 className="w-4 h-4 mr-2" />
-                    Approve
+                    Export
                   </Button>
                 </div>
               </div>
