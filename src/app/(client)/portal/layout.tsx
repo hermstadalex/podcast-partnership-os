@@ -50,9 +50,6 @@ export default async function ClientPortalLayout({
               <Link href="/portal" className="text-sm text-zinc-400 transition-colors hover:text-zinc-100">
                 Dashboard
               </Link>
-              <Link href="/portal/approvals" className="text-sm text-zinc-400 transition-colors hover:text-zinc-100">
-                Approvals
-              </Link>
             </nav>
           </div>
           <div className="flex items-center gap-4">

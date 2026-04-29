@@ -124,7 +124,7 @@ export default function DashboardPage() {
               </TableRow>
             ) : (
               filteredEpisodes.map((ep) => (
-                <TableRow key={ep.id} className="border-zinc-800 hover:bg-zinc-800/50 transition-colors">
+                <TableRow key={ep.id} className="border-zinc-800 hover:bg-zinc-800/50 transition-colors cursor-pointer" onClick={() => setSelectedShow(ep.show_id)}>
                   {/* Episode Title */}
                   <TableCell className="font-medium text-zinc-200 max-w-[280px]">
                     <span className="line-clamp-1">{ep.title}</span>
