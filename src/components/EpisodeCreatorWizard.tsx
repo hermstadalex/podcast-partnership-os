@@ -40,7 +40,10 @@ export function EpisodeCreatorWizard({ isOpen, onClose, showId }: { isOpen: bool
     if (isOpen) {
       setEffectiveShowId(showId);
       if (!showId) {
-        getShows().then(setShows).catch(console.error);
+        getShows().then(data => {
+          const sorted = [...data].sort((a, b) => (a.title || '').localeCompare(b.title || ''));
+          setShows(sorted);
+        }).catch(console.error);
       }
     }
   }, [isOpen, showId]);
@@ -49,6 +52,7 @@ export function EpisodeCreatorWizard({ isOpen, onClose, showId }: { isOpen: bool
     bucketName: 'episodes_bucket',
     maxFiles: 1,
     upsert: true,
+    allowedMimeTypes: ['audio/*', 'video/*']
   });
 
   // Watch for successful upload internally from the Supabase UI block
@@ -145,15 +149,18 @@ export function EpisodeCreatorWizard({ isOpen, onClose, showId }: { isOpen: bool
                 <DropzoneContent />
               </Dropzone>
               
-              <div className="flex justify-center pt-4">
-                <Button 
-                  onClick={() => triggerAI('http://localhost:3000/test_audio.m4a')}
-                  className="bg-indigo-600/20 text-indigo-400 hover:bg-indigo-600/30"
-                >
-                  <Wand2 className="w-4 h-4 mr-2" />
-                  Auto-Run Test Mode (Skip Upload)
-                </Button>
-              </div>
+              
+              {process.env.NODE_ENV === 'development' && (
+                <div className="flex justify-center pt-4">
+                  <Button 
+                    onClick={() => triggerAI('http://localhost:3000/test_audio.m4a')}
+                    className="bg-indigo-600/20 text-indigo-400 hover:bg-indigo-600/30"
+                  >
+                    <Wand2 className="w-4 h-4 mr-2" />
+                    Auto-Run Test Mode (Skip Upload)
+                  </Button>
+                </div>
+              )}
             </div>
           )}
 

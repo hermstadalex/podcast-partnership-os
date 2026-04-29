@@ -104,7 +104,13 @@ Output as a JSON object strictly matching this schema:
     }
 
     const resultText = genResponse?.text;
-    const resultRaw = resultText ? JSON.parse(resultText) : {};
+    // Sanitize control characters that Gemini occasionally injects into JSON strings
+    const sanitized = resultText ? resultText.replace(/[\x00-\x1F\x7F]/g, (ch) => {
+      // Preserve standard whitespace characters
+      if (ch === '\n' || ch === '\r' || ch === '\t') return ch;
+      return '';
+    }) : null;
+    const resultRaw = sanitized ? JSON.parse(sanitized) : {};
     return EpisodeAssetsResultSchema.parse(resultRaw);
   } finally {
     // 5. Cleanup
@@ -148,4 +154,40 @@ The image should have a cinematic look to stand out in the algorithm. Create it 
   ]);
 
   return { podcastArtUrl, youtubeThumbUrl };
+}
+
+/**
+ * Generates an optimized YouTube Shorts title and description.
+ */
+export async function generateShortsAssetsWithGemini(klapTopic: string, originalYoutubeUrl?: string): Promise<{ title: string; description: string }> {
+  const apiKey = process.env.GEMINI_API_KEY;
+  if (!apiKey) {
+    throw new Error('GEMINI_API_KEY is not configured in environment variables');
+  }
+
+  const ai = new GoogleGenAI({ apiKey });
+
+  const prompt = `You are a viral YouTube Shorts strategist. 
+I have a short video clip extracted from a longer podcast. The topic of the clip is: "${klapTopic}"
+
+Your task is to write a highly optimized Title and Description for YouTube Shorts.
+
+- The Title must be under 60 characters, "hooky", and maximize CTR. Include #shorts.
+- The Description must be engaging, 2-3 sentences max, and include relevant hashtags.
+${originalYoutubeUrl ? `- You MUST include this link at the end of the description to drive traffic to the full video: "Watch the full episode: ${originalYoutubeUrl}"` : ''}
+
+Output strictly as a JSON object matching this schema:
+{
+  "title": "string",
+  "description": "string"
+}`;
+
+  const genResponse = await ai.models.generateContent({
+    model: 'gemini-2.5-flash',
+    contents: [{ role: 'user', parts: [{ text: prompt }] }],
+    config: { responseMimeType: 'application/json' },
+  });
+
+  const resultText = genResponse?.text;
+  return resultText ? JSON.parse(resultText) : { title: klapTopic, description: '' };
 }

@@ -345,6 +345,18 @@ export function EpisodeArtForm({ shows, initialDraft, autoRun }: { shows: Show[]
                  <p className="text-sm font-medium text-zinc-200">Template Active</p>
                  <p className="text-xs text-zinc-500">Perfectly mapped configuration</p>
                </div>
+               <Label htmlFor="upload-ref-update" className="bg-zinc-800 hover:bg-zinc-700 text-zinc-200 px-3 py-1.5 rounded-md cursor-pointer text-xs font-semibold inline-flex items-center gap-1.5 transition-colors shrink-0">
+                 <Upload className="h-3 w-3" />
+                 {isUploading ? 'Uploading...' : 'Update'}
+               </Label>
+               <Input 
+                  type="file" 
+                  id="upload-ref-update" 
+                  accept="image/*" 
+                  className="hidden" 
+                  onChange={handleUploadReference}
+                  disabled={isUploading}
+               />
             </div>
           )}
 

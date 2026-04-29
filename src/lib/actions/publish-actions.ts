@@ -84,8 +84,7 @@ export async function publishEpisodeToCaptivate(
     const captivateRunId = await createPublishRun(supabase, episodeId, 'captivate', captivatePayload);
 
     try {
-      const testCaptivateShowId = "44b65556-406f-4a16-8bce-4dd25f0a1de8";
-      await captivateApi.createEpisode(testCaptivateShowId, captivatePayload);
+      await captivateApi.createEpisode(targetShow.captivate_show_id!, captivatePayload);
       await supabase
         .from('episode_publish_runs')
         .update({
@@ -94,7 +93,7 @@ export async function publishEpisodeToCaptivate(
           updated_at: new Date().toISOString(),
         })
         .eq('id', captivateRunId);
-      console.log(`[PIPELINE] Dispatched to Captivate. ShowId: ${testCaptivateShowId}. Status: ${options.status}`);
+      console.log(`[PIPELINE] Dispatched to Captivate. ShowId: ${targetShow.captivate_show_id!}. Status: ${options.status}`);
       return { success: true };
     } catch (apiErr: unknown) {
       await supabase
@@ -161,8 +160,7 @@ export async function dispatchEpisodePublish(episodeId: string, publishMode: 'fu
 
   try {
     try {
-      const testCaptivateShowId = "44b65556-406f-4a16-8bce-4dd25f0a1de8";
-      await captivateApi.createEpisode(testCaptivateShowId, captivatePayload);
+      await captivateApi.createEpisode(targetShow.captivate_show_id!, captivatePayload);
       await supabase
         .from('episode_publish_runs')
         .update({
@@ -171,7 +169,7 @@ export async function dispatchEpisodePublish(episodeId: string, publishMode: 'fu
           updated_at: new Date().toISOString(),
         })
         .eq('id', captivateRunId);
-      console.log(`[PIPELINE] Dispatched to Captivate Drafts. ShowId: ${testCaptivateShowId}`);
+      console.log(`[PIPELINE] Dispatched to Captivate Drafts. ShowId: ${targetShow.captivate_show_id!}`);
     } catch (err: unknown) {
       hasError = true;
       await supabase

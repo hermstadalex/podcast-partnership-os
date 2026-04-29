@@ -98,6 +98,36 @@ export class ZernioService {
   }
 
   /**
+   * Constructs the payload for a Zernio YouTube Short post.
+   */
+  constructYouTubeShortPayload(
+    short: { title: string; description: string; video_url: string },
+    destinationAccount: { external_account_id: string; platform?: string | null } | null
+  ): ZernioPostPayload {
+    const accountId = process.env.ZERNIO_YOUTUBE_ACCOUNT_ID || destinationAccount?.external_account_id;
+    if (!accountId) {
+      throw new Error('Zernio account ID is required for publishing.');
+    }
+
+    return {
+      content: short.description,
+      mediaItems: [{ type: 'video', url: short.video_url }],
+      publishNow: true,
+      platforms: [
+        {
+          platform: destinationAccount?.platform || 'youtube',
+          accountId: accountId,
+          platformSpecificData: {
+            title: short.title,
+            visibility: 'public',
+            type: 'short' // Assuming Zernio accepts 'short' type flag
+          },
+        },
+      ],
+    };
+  }
+
+  /**
    * High-level orchestration for publishing an episode to Zernio.
    * Encapsulates response parsing.
    */

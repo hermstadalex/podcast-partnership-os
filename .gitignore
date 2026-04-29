@@ -49,3 +49,4 @@ scripts/experimental/*.json
 # test output artifacts
 /playwright-report/
 /test-results/
+.env*.local

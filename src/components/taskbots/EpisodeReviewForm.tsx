@@ -4,7 +4,7 @@ import { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { ClipboardCheck, Calendar, Podcast, Video, Loader2, CheckCircle2 } from 'lucide-react';
+import { ClipboardCheck, Calendar, Podcast, Video, Loader2, CheckCircle2, AlertCircle } from 'lucide-react';
 import { toast } from 'sonner';
 import { publishEpisodeToCaptivate, updateEpisodeDraft } from '@/app/actions';
 import { useRouter } from 'next/navigation';
@@ -23,7 +23,7 @@ export function EpisodeReviewForm({
   const router = useRouter();
   
   const [title, setTitle] = useState(episode.title || '');
-  const [description] = useState(episode.description || '');
+  const [description, setDescription] = useState(episode.description || '');
   const [episodeSeason, setEpisodeSeason] = useState<number | undefined>(episode.episode_season || undefined);
   const [episodeNumber, setEpisodeNumber] = useState<number | undefined>(episode.episode_number || undefined);
   const [status, setStatus] = useState<PublishStatus>('Draft');
@@ -40,6 +40,7 @@ export function EpisodeReviewForm({
       // Always save updated metadata before publishing
       await updateEpisodeDraft(episode.id, {
         title,
+        description,
         ...(displayArt && displayArt !== episode.episode_art ? { episode_art: displayArt } : {}),
         episode_season: episodeSeason,
         episode_number: episodeNumber,
@@ -103,9 +104,17 @@ export function EpisodeReviewForm({
             Track its status in the Global Feed.
           </p>
         </div>
-        <Button onClick={() => router.push('/')} className="bg-zinc-800 hover:bg-zinc-700 text-white px-8">
-          Return to Dashboard
-        </Button>
+        <div className="flex gap-4">
+          <Button onClick={() => router.push('/')} className="bg-zinc-800 hover:bg-zinc-700 text-white px-8">
+            Return to Dashboard
+          </Button>
+          {episode.media_url?.match(/\.(mp4|mov|webm|avi|mkv)$/i) && (
+            <Button onClick={() => router.push(`/taskbots/shorts-creator?episodeId=${episode.id}`)} className="bg-emerald-600 hover:bg-emerald-500 text-white px-8 font-semibold shadow-[0_0_15px_rgba(16,185,129,0.3)] hover:shadow-[0_0_25px_rgba(16,185,129,0.5)] transition-all">
+              <Video className="w-4 h-4 mr-2" />
+              Launch Shorts Creator
+            </Button>
+          )}
+        </div>
       </div>
     );
   }
@@ -126,29 +135,45 @@ export function EpisodeReviewForm({
           />
         </div>
 
-        {/* Shownotes Preview */}
+        {/* Shownotes Dual-Pane Editor */}
         <div className="border border-zinc-800 bg-zinc-900/50 rounded-xl p-6">
           <div className="flex items-center justify-between mb-4">
-            <Label className="text-sm font-medium text-zinc-300">Shownotes (HTML Preview)</Label>
-            <span className="text-xs text-zinc-500">{description.length}/4000 chars</span>
+            <Label className="text-sm font-medium text-zinc-300">Shownotes Editor</Label>
+            <span className={`text-xs ${description.length > 4000 ? 'text-red-400 font-semibold' : 'text-zinc-500'}`}>{description.length}/4000 chars</span>
           </div>
-          <div 
-            className="bg-zinc-950 border border-zinc-800 rounded-md p-5 min-h-[200px] max-h-[400px] overflow-y-auto max-w-none text-sm text-zinc-300
-              [&_h1]:text-zinc-100 [&_h1]:font-bold [&_h1]:text-xl [&_h1]:mt-6 [&_h1]:mb-3
-              [&_h2]:text-zinc-100 [&_h2]:font-semibold [&_h2]:text-lg [&_h2]:mt-5 [&_h2]:mb-2
-              [&_h3]:text-zinc-100 [&_h3]:font-semibold [&_h3]:mt-4 [&_h3]:mb-2
-              [&_p]:text-zinc-300 [&_p]:leading-relaxed [&_p]:mb-4
-              [&_ul]:list-disc [&_ul]:pl-5 [&_ul]:mb-4 [&_ul]:space-y-1
-              [&_ol]:list-decimal [&_ol]:pl-5 [&_ol]:mb-4 [&_ol]:space-y-1
-              [&_li]:text-zinc-300
-              [&_table]:w-full [&_table]:border-collapse [&_table]:border [&_table]:border-zinc-700 [&_table]:mb-4
-              [&_th]:bg-zinc-800 [&_th]:text-zinc-200 [&_th]:px-3 [&_th]:py-2 [&_th]:text-left [&_th]:border [&_th]:border-zinc-700 [&_th]:font-medium
-              [&_td]:px-3 [&_td]:py-2 [&_td]:border [&_td]:border-zinc-700 [&_td]:text-zinc-300
-              [&_a]:text-indigo-400 [&_a]:underline
-              [&_strong]:text-zinc-100 [&_strong]:font-semibold
-              [&_b]:text-zinc-100 [&_b]:font-semibold"
-            dangerouslySetInnerHTML={{ __html: description || '<p class="text-zinc-500 italic">No shownotes available.</p>' }}
-          />
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+            {/* Left: Raw HTML Editor */}
+            <div>
+              <span className="text-[10px] uppercase tracking-widest text-zinc-500 mb-1.5 block font-semibold">Edit HTML</span>
+              <textarea
+                value={description}
+                onChange={(e) => setDescription(e.target.value)}
+                spellCheck={false}
+                className="w-full h-[350px] bg-zinc-950 border border-zinc-800 rounded-md p-4 font-mono text-xs text-zinc-300 resize-none focus:outline-none focus:ring-1 focus:ring-indigo-500 focus:border-indigo-500"
+              />
+            </div>
+            {/* Right: Live Preview */}
+            <div>
+              <span className="text-[10px] uppercase tracking-widest text-zinc-500 mb-1.5 block font-semibold">Live Preview</span>
+              <div 
+                className="h-[350px] bg-zinc-950 border border-zinc-800 rounded-md p-4 overflow-y-auto max-w-none text-sm text-zinc-300
+                  [&_h1]:text-zinc-100 [&_h1]:font-bold [&_h1]:text-xl [&_h1]:mt-6 [&_h1]:mb-3
+                  [&_h2]:text-zinc-100 [&_h2]:font-semibold [&_h2]:text-lg [&_h2]:mt-5 [&_h2]:mb-2
+                  [&_h3]:text-zinc-100 [&_h3]:font-semibold [&_h3]:mt-4 [&_h3]:mb-2
+                  [&_p]:text-zinc-300 [&_p]:leading-relaxed [&_p]:mb-4
+                  [&_ul]:list-disc [&_ul]:pl-5 [&_ul]:mb-4 [&_ul]:space-y-1
+                  [&_ol]:list-decimal [&_ol]:pl-5 [&_ol]:mb-4 [&_ol]:space-y-1
+                  [&_li]:text-zinc-300
+                  [&_table]:w-full [&_table]:border-collapse [&_table]:border [&_table]:border-zinc-700 [&_table]:mb-4
+                  [&_th]:bg-zinc-800 [&_th]:text-zinc-200 [&_th]:px-3 [&_th]:py-2 [&_th]:text-left [&_th]:border [&_th]:border-zinc-700 [&_th]:font-medium
+                  [&_td]:px-3 [&_td]:py-2 [&_td]:border [&_td]:border-zinc-700 [&_td]:text-zinc-300
+                  [&_a]:text-indigo-400 [&_a]:underline
+                  [&_strong]:text-zinc-100 [&_strong]:font-semibold
+                  [&_b]:text-zinc-100 [&_b]:font-semibold"
+                dangerouslySetInnerHTML={{ __html: description || '<p class="text-zinc-500 italic">No shownotes available.</p>' }}
+              />
+            </div>
+          </div>
         </div>
 
         {/* Art Preview */}
@@ -274,6 +299,12 @@ export function EpisodeReviewForm({
                   className="bg-zinc-950 border-zinc-800 text-zinc-100 focus-visible:ring-indigo-500"
                 />
               </div>
+              {(!scheduleDate || !scheduleTime) && (
+                <div className="flex items-center gap-1.5 text-amber-400 text-xs pt-1">
+                  <AlertCircle className="h-3 w-3 shrink-0" />
+                  <span>Please select both a date and time to enable scheduling.</span>
+                </div>
+              )}
             </div>
           )}
         </div>
