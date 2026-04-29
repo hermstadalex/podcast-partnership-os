@@ -1,8 +1,8 @@
 -- Add klap_folder_id to the episodes table
-ALTER TABLE public.episodes ADD COLUMN klap_folder_id TEXT;
+ALTER TABLE public.episodes ADD COLUMN IF NOT EXISTS klap_folder_id TEXT;
 
 -- Create the episode_shorts table to track the individual generated clips
-CREATE TABLE public.episode_shorts (
+CREATE TABLE IF NOT EXISTS public.episode_shorts (
     id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
     episode_id UUID NOT NULL REFERENCES public.episodes(id) ON DELETE CASCADE,
     klap_project_id TEXT NOT NULL,

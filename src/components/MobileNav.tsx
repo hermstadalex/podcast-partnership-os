@@ -3,7 +3,7 @@
 import { useState } from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { Mic, LayoutDashboard, Users, Settings, CheckCircle2, Bot, Menu } from 'lucide-react';
+import { Mic, LayoutDashboard, Users, Settings, Bot, Menu } from 'lucide-react';
 import { Drawer, DrawerContent, DrawerTrigger, DrawerTitle } from '@/components/ui/drawer';
 import { Button } from '@/components/ui/button';
 

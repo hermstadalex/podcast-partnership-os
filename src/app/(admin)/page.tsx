@@ -178,7 +178,7 @@ export default function DashboardPage() {
                           );
 
                           return href ? (
-                            <a key={i} href={href} target="_blank" rel="noopener noreferrer" className="hover:opacity-80 transition-opacity">
+                            <a key={i} href={href} target="_blank" rel="noopener noreferrer" className="hover:opacity-80 transition-opacity" onClick={(e) => e.stopPropagation()}>
                               {badge}
                             </a>
                           ) : badge;
@@ -193,6 +193,7 @@ export default function DashboardPage() {
                       <Link
                         href={`/taskbots/shorts-creator?episodeId=${ep.id}`}
                         className="inline-flex items-center gap-1 px-2 py-1 rounded text-xs font-semibold bg-fuchsia-500/10 text-fuchsia-400 border border-fuchsia-500/20 hover:bg-fuchsia-500/20 transition-colors"
+                        onClick={(e) => e.stopPropagation()}
                       >
                         <Scissors className="w-3 h-3" />
                         {ep.shorts_count} Short{ep.shorts_count !== 1 ? 's' : ''}
@@ -201,6 +202,7 @@ export default function DashboardPage() {
                       <Link
                         href={`/taskbots/shorts-creator?episodeId=${ep.id}`}
                         className="inline-flex items-center gap-1 px-2 py-1 rounded text-xs font-semibold bg-zinc-800 text-zinc-300 border border-zinc-700 hover:bg-zinc-700 hover:text-zinc-100 transition-colors"
+                        onClick={(e) => e.stopPropagation()}
                       >
                         <Video className="w-3 h-3" />
                         Generate
