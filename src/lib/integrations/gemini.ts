@@ -110,7 +110,35 @@ Output as a JSON object strictly matching this schema:
       if (ch === '\n' || ch === '\r' || ch === '\t') return ch;
       return '';
     }) : null;
-    const resultRaw = sanitized ? JSON.parse(sanitized) : {};
+    
+    let resultRaw: any;
+    try {
+      resultRaw = sanitized ? JSON.parse(sanitized) : {};
+    } catch (parseErr) {
+      console.warn('[GEMINI] JSON parse failed on first attempt, retrying generation...', parseErr);
+      // Retry once — Gemini's output is non-deterministic, so a second attempt often succeeds
+      const retryResponse = await ai.models.generateContent({
+        model: 'gemini-2.5-flash',
+        contents: [
+          {
+            role: 'user',
+            parts: [
+              { text: prompt },
+              { fileData: { fileUri: fileHandle.uri, mimeType: fileHandle.mimeType } },
+            ],
+          },
+        ],
+        config: {
+          responseMimeType: 'application/json',
+        },
+      });
+      const retryText = retryResponse?.text;
+      const retrySanitized = retryText ? retryText.replace(/[\x00-\x1F\x7F]/g, (ch) => {
+        if (ch === '\n' || ch === '\r' || ch === '\t') return ch;
+        return '';
+      }) : null;
+      resultRaw = retrySanitized ? JSON.parse(retrySanitized) : {};
+    }
     return EpisodeAssetsResultSchema.parse(resultRaw);
   } finally {
     // 5. Cleanup
