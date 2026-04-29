@@ -3,7 +3,7 @@
 import { useState } from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { Mic, LayoutDashboard, Users, Settings, Bot, Menu } from 'lucide-react';
+import { Mic, LayoutDashboard, Users, Settings, Bot, Menu, AlertTriangle } from 'lucide-react';
 import { Drawer, DrawerContent, DrawerTrigger, DrawerTitle } from '@/components/ui/drawer';
 import { Button } from '@/components/ui/button';
 
@@ -13,6 +13,7 @@ export function MobileNav() {
 
   const navItems = [
     { name: 'Command Center', href: '/', icon: LayoutDashboard },
+    { name: 'Error Center', href: '/errors', icon: AlertTriangle },
     { name: 'Clients', href: '/clients', icon: Users },
     { name: 'Shows', href: '/shows', icon: Mic },
     { name: 'Taskbots', href: '/taskbots/episode-art', icon: Bot },

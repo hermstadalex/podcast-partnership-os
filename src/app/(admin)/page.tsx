@@ -2,6 +2,7 @@
 
 import { useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
+import { useRouter } from 'next/navigation';
 import { getEpisodes } from '@/app/actions';
 import { PodcastProfileEditor } from '@/components/PodcastProfileEditor';
 import { EpisodeCreatorWizard } from '@/components/EpisodeCreatorWizard';
@@ -14,7 +15,7 @@ import {
   TableHeader,
   TableRow,
 } from '@/components/ui/table';
-import { Search, Loader2, Wand2, ExternalLink, Scissors, Podcast, Video, Globe } from 'lucide-react';
+import { Search, Loader2, Wand2, ExternalLink, Scissors, Podcast, Video, Globe, Settings } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import Link from 'next/link';
 
@@ -55,6 +56,7 @@ const providerLabel: Record<string, string> = {
 };
 
 export default function DashboardPage() {
+  const router = useRouter();
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedShow, setSelectedShow] = useState<string | null>(null);
   const [isWizardOpen, setIsWizardOpen] = useState(false);
@@ -107,24 +109,29 @@ export default function DashboardPage() {
               <TableHead className="text-zinc-400 font-medium">Destinations</TableHead>
               <TableHead className="text-zinc-400 font-medium">Shorts</TableHead>
               <TableHead className="text-zinc-400 font-medium text-right">Created</TableHead>
+              <TableHead className="text-zinc-400 font-medium text-right">Actions</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
             {isLoading ? (
               <TableRow className="border-zinc-800">
-                <TableCell colSpan={6} className="h-24 text-center">
+                <TableCell colSpan={7} className="h-24 text-center">
                   <Loader2 className="h-6 w-6 animate-spin mx-auto text-zinc-500" />
                 </TableCell>
               </TableRow>
             ) : filteredEpisodes.length === 0 ? (
               <TableRow className="border-zinc-800">
-                <TableCell colSpan={6} className="h-24 text-center text-zinc-500">
+                <TableCell colSpan={7} className="h-24 text-center text-zinc-500">
                   No episodes found.
                 </TableCell>
               </TableRow>
             ) : (
               filteredEpisodes.map((ep) => (
-                <TableRow key={ep.id} className="border-zinc-800 hover:bg-zinc-800/50 transition-colors cursor-pointer" onClick={() => setSelectedShow(ep.show_id)}>
+                <TableRow
+                  key={ep.id}
+                  className="border-zinc-800 hover:bg-zinc-800/50 transition-colors cursor-pointer"
+                  onClick={() => router.push(`/episodes/${ep.id}`)}
+                >
                   {/* Episode Title */}
                   <TableCell className="font-medium text-zinc-200 max-w-[280px]">
                     <span className="line-clamp-1">{ep.title}</span>
@@ -215,6 +222,22 @@ export default function DashboardPage() {
                   {/* Created */}
                   <TableCell className="text-right text-zinc-500 font-mono text-xs">
                     {new Date(ep.created_at).toLocaleDateString()}
+                  </TableCell>
+
+                  <TableCell className="text-right">
+                    <Button
+                      variant="ghost"
+                      size="icon-sm"
+                      className="text-zinc-400 hover:text-zinc-100"
+                      title="Edit show profile"
+                      onClick={(event) => {
+                        event.stopPropagation();
+                        setSelectedShow(ep.show_id);
+                      }}
+                    >
+                      <Settings className="w-3.5 h-3.5" />
+                      <span className="sr-only">Edit show profile</span>
+                    </Button>
                   </TableCell>
                 </TableRow>
               ))

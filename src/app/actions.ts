@@ -10,6 +10,8 @@ export {
   generateVisualAssets, 
   saveEpisodeDraft, 
   getEpisodes, 
+  getEpisodeOperationalContext,
+  getOperationalIssues,
   getEpisodeDraft,
   updateEpisodeDraft
 } from '@/lib/actions/episode-actions';

@@ -3,6 +3,13 @@
 import { createClient } from '@/lib/supabase/server';
 import { generateEpisodeAssetsWithGemini, generateVisualAssetsWithGemini } from '@/lib/integrations/gemini';
 import { resolveAuthorizedShow } from '@/lib/supabase/queries';
+import {
+  buildEpisodeOperationalIssues,
+  sortOperationalIssues,
+  type HealthCheckDestination,
+  type HealthCheckEpisode,
+  type HealthCheckRun,
+} from '@/lib/operational-issues';
 
 export type EpisodeRunRecord = {
   provider: string;
@@ -26,6 +33,31 @@ export type EpisodeFeedRecord = {
   } | null;
   runs?: { provider: string; status: string; }[] | null;
   shorts?: { id: string; title?: string | null; video_url?: string | null; approval_status?: string | null; }[] | null;
+};
+
+export type EpisodeOperationalContext = {
+  episode: HealthCheckEpisode & {
+    description?: string | null;
+    youtube_video_url?: string | null;
+    youtube_video_id?: string | null;
+    episode_art?: string | null;
+    image_url?: string | null;
+    published_at?: string | null;
+    updated_at?: string | null;
+    scheduled_at?: string | null;
+    episode_season?: number | null;
+    episode_number?: number | null;
+    klap_folder_id?: string | null;
+    shorts?: {
+      id: string;
+      title?: string | null;
+      video_url?: string | null;
+      approval_status?: string | null;
+      export_status?: string | null;
+      created_at?: string | null;
+    }[] | null;
+  };
+  issues: ReturnType<typeof buildEpisodeOperationalIssues>;
 };
 
 export async function generateEpisodeAssets(mediaUrl: string) {
@@ -114,6 +146,87 @@ export async function getEpisodes() {
   });
 
   return { episodes };
+}
+
+function normalizeEpisodeContext(rawEpisode: unknown): HealthCheckEpisode {
+  const episode = rawEpisode as HealthCheckEpisode & {
+    show?: (HealthCheckEpisode['show'] & {
+      destinations?: (HealthCheckDestination & {
+        account?: HealthCheckDestination['account'] | null;
+      })[] | null;
+    }) | null;
+    runs?: HealthCheckRun[] | null;
+  };
+
+  return {
+    ...episode,
+    runs: Array.isArray(episode.runs) ? episode.runs : [],
+    show: episode.show
+      ? {
+          ...episode.show,
+          destinations: Array.isArray(episode.show.destinations) ? episode.show.destinations : [],
+        }
+      : null,
+  };
+}
+
+const episodeContextSelect = `
+  id, title, description, media_url, image_url, youtube_video_id, youtube_video_url,
+  published_at, created_at, updated_at, show_id, episode_art, episode_season,
+  episode_number, scheduled_at, klap_folder_id,
+  show:shows(
+    id, title, abbreviation, captivate_show_id, client_id, cover_art,
+    youtube_reference_art, podcast_reference_art,
+    client:clients(id, name, email),
+    destinations:show_publish_destinations(
+      id, is_default, zernio_account_id,
+      account:zernio_accounts(id, external_account_id, platform, account_name, channel_title)
+    )
+  ),
+  runs:episode_publish_runs(
+    id, provider, status, error_message, external_entity_id,
+    requested_at, completed_at, created_at, updated_at
+  ),
+  shorts:episode_shorts(id, title, video_url, approval_status, export_status, created_at)
+`;
+
+export async function getEpisodeOperationalContext(episodeId: string): Promise<EpisodeOperationalContext | null> {
+  const supabase = await createClient();
+  const { data, error } = await supabase
+    .from('episodes')
+    .select(episodeContextSelect)
+    .eq('id', episodeId)
+    .single();
+
+  if (error || !data) {
+    console.error('Failed to fetch episode operational context:', error);
+    return null;
+  }
+
+  const episode = normalizeEpisodeContext(data) as EpisodeOperationalContext['episode'];
+  const issues = sortOperationalIssues(buildEpisodeOperationalIssues(episode));
+
+  return { episode, issues };
+}
+
+export async function getOperationalIssues() {
+  const supabase = await createClient();
+  const { data, error } = await supabase
+    .from('episodes')
+    .select(episodeContextSelect)
+    .order('created_at', { ascending: false })
+    .limit(100);
+
+  if (error) {
+    console.error('Failed to fetch operational issues:', error);
+    return { issues: [] };
+  }
+
+  const issues = (data || []).flatMap((episode) =>
+    buildEpisodeOperationalIssues(normalizeEpisodeContext(episode))
+  );
+
+  return { issues: sortOperationalIssues(issues) };
 }
 
 export async function getEpisodeDraft(episodeId: string) {
