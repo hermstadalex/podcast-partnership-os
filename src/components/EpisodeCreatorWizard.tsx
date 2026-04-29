@@ -12,7 +12,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog';
-import { Loader2, Sparkles, Wand2, Code, Eye } from 'lucide-react';
+import { Loader2, Sparkles, Wand2 } from 'lucide-react';
 import { toast } from 'sonner';
 import { EpisodeTracker } from './EpisodeTracker';
 import { generateEpisodeAssets, saveEpisodeDraft, getShows } from '@/app/actions';
@@ -28,7 +28,7 @@ export function EpisodeCreatorWizard({ isOpen, onClose, showId }: { isOpen: bool
   const [fileUrl, setFileUrl] = useState<string>('');
   const [title, setTitle] = useState('');
   const [description, setDescription] = useState('');
-  const [previewMode, setPreviewMode] = useState<'source' | 'preview'>('preview');
+
   
   const router = useRouter();
 
@@ -103,7 +103,6 @@ export function EpisodeCreatorWizard({ isOpen, onClose, showId }: { isOpen: bool
     setFileUrl('');
     setTitle('');
     setDescription('');
-    setPreviewMode('preview');
     uploadProps.setFiles([]);
     uploadProps.setErrors([]);
     setEffectiveShowId(showId);
@@ -190,66 +189,48 @@ export function EpisodeCreatorWizard({ isOpen, onClose, showId }: { isOpen: bool
                 />
               </div>
 
-              {/* HTML Shownotes Editor */}
+              {/* Dual-Pane HTML Shownotes Editor */}
               <div className="space-y-2">
                 <div className="flex items-center justify-between">
                   <label className="text-sm font-medium text-zinc-300">AI Shownotes (HTML)</label>
-                  <div className="flex items-center bg-zinc-900 border border-zinc-800 rounded-md overflow-hidden">
-                    <button
-                      onClick={() => setPreviewMode('source')}
-                      className={`px-3 py-1.5 text-xs font-medium flex items-center gap-1.5 transition-colors ${
-                        previewMode === 'source' 
-                          ? 'bg-indigo-600 text-white' 
-                          : 'text-zinc-400 hover:text-zinc-200'
-                      }`}
-                    >
-                      <Code className="w-3 h-3" />
-                      Source
-                    </button>
-                    <button
-                      onClick={() => setPreviewMode('preview')}
-                      className={`px-3 py-1.5 text-xs font-medium flex items-center gap-1.5 transition-colors ${
-                        previewMode === 'preview' 
-                          ? 'bg-indigo-600 text-white' 
-                          : 'text-zinc-400 hover:text-zinc-200'
-                      }`}
-                    >
-                      <Eye className="w-3 h-3" />
-                      Preview
-                    </button>
-                  </div>
+                  <span className={`text-xs ${description.length > 4000 ? 'text-red-400 font-semibold' : 'text-zinc-500'}`}>
+                    {description.length}/4000 chars
+                  </span>
                 </div>
                 
-                {previewMode === 'source' ? (
-                  <textarea 
-                    value={description} 
-                    onChange={(e) => setDescription(e.target.value)}
-                    className="w-full bg-zinc-900 border border-zinc-800 rounded-md p-3 text-sm font-mono text-zinc-200 focus:outline-none focus:ring-2 focus:ring-indigo-500 resize-none min-h-[250px] overflow-y-auto"
-                    spellCheck={false}
-                  />
-                ) : (
-                  <div 
-                    className="w-full bg-zinc-900 border border-zinc-800 rounded-md p-4 min-h-[250px] max-h-[400px] overflow-y-auto max-w-none text-sm text-zinc-300
-                      [&_h1]:text-zinc-100 [&_h1]:font-bold [&_h1]:text-xl [&_h1]:mt-6 [&_h1]:mb-3
-                      [&_h2]:text-zinc-100 [&_h2]:font-semibold [&_h2]:text-lg [&_h2]:mt-5 [&_h2]:mb-2
-                      [&_h3]:text-zinc-100 [&_h3]:font-semibold [&_h3]:mt-4 [&_h3]:mb-2
-                      [&_p]:text-zinc-300 [&_p]:leading-relaxed [&_p]:mb-4
-                      [&_ul]:list-disc [&_ul]:pl-5 [&_ul]:mb-4 [&_ul]:space-y-1
-                      [&_ol]:list-decimal [&_ol]:pl-5 [&_ol]:mb-4 [&_ol]:space-y-1
-                      [&_li]:text-zinc-300
-                      [&_table]:w-full [&_table]:border-collapse [&_table]:border [&_table]:border-zinc-700 [&_table]:mb-4
-                      [&_th]:bg-zinc-800 [&_th]:text-zinc-200 [&_th]:px-3 [&_th]:py-2 [&_th]:text-left [&_th]:border [&_th]:border-zinc-700 [&_th]:font-medium
-                      [&_td]:px-3 [&_td]:py-2 [&_td]:border [&_td]:border-zinc-700 [&_td]:text-zinc-300
-                      [&_a]:text-indigo-400 [&_a]:underline
-                      [&_strong]:text-zinc-100 [&_strong]:font-semibold
-                      [&_b]:text-zinc-100 [&_b]:font-semibold"
-                    dangerouslySetInnerHTML={{ __html: description || '<p class="text-zinc-500 italic">No shownotes generated yet.</p>' }}
-                  />
-                )}
-                
-                <p className="text-xs text-zinc-500">
-                  {description.length}/4000 characters · HTML rendered for Captivate podcast feed
-                </p>
+                <div className="grid grid-cols-1 lg:grid-cols-2 gap-3">
+                  {/* Left: Raw HTML Editor */}
+                  <div>
+                    <span className="text-[10px] uppercase tracking-widest text-zinc-500 mb-1.5 block font-semibold">Edit HTML</span>
+                    <textarea 
+                      value={description} 
+                      onChange={(e) => setDescription(e.target.value)}
+                      className="w-full h-[300px] bg-zinc-900 border border-zinc-800 rounded-md p-3 text-xs font-mono text-zinc-200 focus:outline-none focus:ring-1 focus:ring-indigo-500 resize-none"
+                      spellCheck={false}
+                    />
+                  </div>
+                  {/* Right: Live Preview */}
+                  <div>
+                    <span className="text-[10px] uppercase tracking-widest text-zinc-500 mb-1.5 block font-semibold">Live Preview</span>
+                    <div 
+                      className="h-[300px] bg-zinc-900 border border-zinc-800 rounded-md p-3 overflow-y-auto max-w-none text-sm text-zinc-300
+                        [&_h1]:text-zinc-100 [&_h1]:font-bold [&_h1]:text-xl [&_h1]:mt-6 [&_h1]:mb-3
+                        [&_h2]:text-zinc-100 [&_h2]:font-semibold [&_h2]:text-lg [&_h2]:mt-5 [&_h2]:mb-2
+                        [&_h3]:text-zinc-100 [&_h3]:font-semibold [&_h3]:mt-4 [&_h3]:mb-2
+                        [&_p]:text-zinc-300 [&_p]:leading-relaxed [&_p]:mb-4
+                        [&_ul]:list-disc [&_ul]:pl-5 [&_ul]:mb-4 [&_ul]:space-y-1
+                        [&_ol]:list-decimal [&_ol]:pl-5 [&_ol]:mb-4 [&_ol]:space-y-1
+                        [&_li]:text-zinc-300
+                        [&_table]:w-full [&_table]:border-collapse [&_table]:border [&_table]:border-zinc-700 [&_table]:mb-4
+                        [&_th]:bg-zinc-800 [&_th]:text-zinc-200 [&_th]:px-3 [&_th]:py-2 [&_th]:text-left [&_th]:border [&_th]:border-zinc-700 [&_th]:font-medium
+                        [&_td]:px-3 [&_td]:py-2 [&_td]:border [&_td]:border-zinc-700 [&_td]:text-zinc-300
+                        [&_a]:text-indigo-400 [&_a]:underline
+                        [&_strong]:text-zinc-100 [&_strong]:font-semibold
+                        [&_b]:text-zinc-100 [&_b]:font-semibold"
+                      dangerouslySetInnerHTML={{ __html: description || '<p class="text-zinc-500 italic">No shownotes generated yet.</p>' }}
+                    />
+                  </div>
+                </div>
               </div>
 
               <div className="flex items-center justify-between pt-4">
