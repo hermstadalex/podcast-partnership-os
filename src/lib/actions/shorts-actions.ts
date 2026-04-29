@@ -53,7 +53,8 @@ export async function getGeneratedShorts(folderId: string) {
 
 export async function exportShort(folderId: string, projectId: string) {
   const exportTask = await klapApi.exportShort(folderId, projectId);
-  return exportTask.id;
+  console.log('[KLAP EXPORT] Started:', JSON.stringify(exportTask));
+  return exportTask;
 }
 
 export async function pollExportStatus(folderId: string, projectId: string, exportId: string) {
@@ -62,13 +63,22 @@ export async function pollExportStatus(folderId: string, projectId: string, expo
 }
 
 export async function saveApprovedShort(episodeId: string, projectId: string, videoUrl: string, klapName: string) {
+  console.log('[SHORTS] saveApprovedShort called:', { episodeId, projectId, videoUrl, klapName });
   const supabase = await createClient();
-  const { data: episode } = await supabase.from('episodes').select('youtube_video_url').eq('id', episodeId).single();
+  const { data: episode, error: epError } = await supabase.from('episodes').select('youtube_video_url').eq('id', episodeId).single();
+  if (epError) console.error('[SHORTS] Episode fetch error:', epError);
 
   // Generate Gemini metadata
-  const metadata = await generateShortsAssetsWithGemini(klapName, episode?.youtube_video_url || undefined);
+  let metadata: any;
+  try {
+    metadata = await generateShortsAssetsWithGemini(klapName, episode?.youtube_video_url || undefined);
+    console.log('[SHORTS] Gemini metadata generated:', metadata);
+  } catch (gemErr) {
+    console.error('[SHORTS] Gemini metadata generation failed:', gemErr);
+    metadata = { title: klapName, description: '' };
+  }
 
-  const { data: short } = await supabase.from('episode_shorts').insert({
+  const { data: short, error: insertError } = await supabase.from('episode_shorts').insert({
     episode_id: episodeId,
     klap_project_id: projectId,
     title: metadata.title,
@@ -76,6 +86,11 @@ export async function saveApprovedShort(episodeId: string, projectId: string, vi
     approval_status: 'approved',
     export_status: 'completed',
   }).select('*').single();
+
+  if (insertError) {
+    console.error('[SHORTS] Insert error:', insertError);
+    throw new Error(`Failed to save short: ${insertError.message}`);
+  }
 
   return { short, description: metadata.description };
 }

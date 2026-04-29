@@ -95,33 +95,51 @@ export function ShortsCreatorClient({ episode }: { episode: any }) {
   };
 
   const pollForExport = async (eId: string, short: any) => {
+    let res: any;
     try {
-      const res = await pollExportStatus(folderId!, short.id, eId);
-      if (res.status === 'ready' || res.status === 'completed' || res.status === 'done') {
-        toast.success("Export complete! Generating AI metadata...");
-        // Save the short and get AI-generated title + description
+      res = await pollExportStatus(folderId!, short.id, eId);
+    } catch (e) {
+      // Network/poll error — retry
+      console.error('Export poll error:', e);
+      setTimeout(() => pollForExport(eId, short), 10000);
+      return;
+    }
+
+    if (res.status === 'ready' || res.status === 'completed' || res.status === 'done') {
+      toast.success("Export complete! Generating AI metadata...");
+      try {
         const { description, short: savedShort } = await saveApprovedShort(
           episode.id, short.id, res.src_url, short.name
         );
-        // Transition to preview
         setPreviewVideoUrl(res.src_url);
         setPreviewTitle(savedShort.title || short.name || '');
         setPreviewDescription(description || '');
         setSavedShortRecord(savedShort);
         setPhase('PREVIEW');
-      } else if (res.status === 'error' || res.status === 'failed') {
-        toast.error('Klap export failed.');
-        setPhase('REVIEW');
-      } else {
-        setTimeout(() => pollForExport(eId, short), 10000);
+      } catch (metaErr: any) {
+        console.error('Metadata generation failed:', metaErr);
+        // Still show preview with basic info — don't loop
+        setPreviewVideoUrl(res.src_url);
+        setPreviewTitle(short.name || 'Untitled Short');
+        setPreviewDescription('');
+        setSavedShortRecord(null);
+        toast.error(`AI metadata failed: ${metaErr.message}. You can edit manually.`);
+        setPhase('PREVIEW');
       }
-    } catch (e) {
-      console.error(e);
+    } else if (res.status === 'error' || res.status === 'failed') {
+      toast.error('Klap export failed.');
+      setPhase('REVIEW');
+    } else {
       setTimeout(() => pollForExport(eId, short), 10000);
     }
   };
 
   const handlePublish = async () => {
+    if (!savedShortRecord?.id) {
+      toast.error('No saved short record. Please try exporting again.');
+      setPhase('REVIEW');
+      return;
+    }
     setPhase('PUBLISHING');
     try {
       await publishShortToZernio(
