@@ -1,7 +1,7 @@
 'use client';
 
 import Link from 'next/link';
-import { Mic, LayoutDashboard, Users, Settings, CheckCircle2, Bot } from 'lucide-react';
+import { Mic, LayoutDashboard, Users, Settings, Bot } from 'lucide-react';
 import { usePathname } from 'next/navigation';
 import { RealtimeAvatarStack } from '@/components/realtime-avatar-stack';
 
@@ -10,7 +10,6 @@ export function Sidebar() {
 
   const navItems = [
     { name: 'Command Center', href: '/', icon: LayoutDashboard },
-    { name: 'Approvals', href: '/approvals', icon: CheckCircle2 },
     { name: 'Clients', href: '/clients', icon: Users },
     { name: 'Shows', href: '/shows', icon: Mic },
     { name: 'Taskbots', href: '/taskbots/episode-art', icon: Bot },
