@@ -26,6 +26,7 @@ export async function startShortsGeneration(episodeId: string) {
 
 export async function pollShortsTask(taskId: string, episodeId: string) {
   const taskStatus = await klapApi.getTaskStatus(taskId);
+  console.log(`[KLAP POLL] Task ${taskId} status: ${taskStatus.status}`, JSON.stringify(taskStatus));
   
   if (taskStatus.status === 'ready' || taskStatus.status === 'completed' || taskStatus.status === 'done') {
     const folderId = taskStatus.output_id || taskStatus.project_group_id || taskStatus.folder_id;
@@ -35,6 +36,10 @@ export async function pollShortsTask(taskId: string, episodeId: string) {
       await supabase.from('episodes').update({ klap_folder_id: folderId }).eq('id', episodeId);
       return { status: 'completed', folderId };
     }
+  }
+
+  if (taskStatus.status === 'error') {
+    console.error(`[KLAP POLL] Task ${taskId} failed:`, JSON.stringify(taskStatus));
   }
 
   return { status: taskStatus.status };
