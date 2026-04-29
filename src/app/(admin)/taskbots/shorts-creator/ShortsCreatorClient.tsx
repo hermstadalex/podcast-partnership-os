@@ -72,7 +72,7 @@ export function ShortsCreatorClient({ episode }: { episode: any }) {
 
   const loadShorts = async (fId: string) => {
     try {
-      const projects = await getGeneratedShorts(fId);
+      const projects = await getGeneratedShorts(fId, episode.id);
       const sorted = (Array.isArray(projects) ? projects : []).sort(
         (a: any, b: any) => (b.virality_score || 0) - (a.virality_score || 0)
       );
@@ -211,11 +211,12 @@ export function ShortsCreatorClient({ episode }: { episode: any }) {
                     Reject
                   </Button>
                   <Button 
-                    className="bg-emerald-600 hover:bg-emerald-500 text-white"
+                    className={short.is_exported ? "bg-zinc-800 text-emerald-400" : "bg-emerald-600 hover:bg-emerald-500 text-white"}
                     onClick={() => handleExport(short)}
+                    disabled={short.is_exported}
                   >
-                    <Play className="w-4 h-4 mr-2" />
-                    Export
+                    {short.is_exported ? <CheckCircle2 className="w-4 h-4 mr-2" /> : <Play className="w-4 h-4 mr-2" />}
+                    {short.is_exported ? 'Published' : 'Export'}
                   </Button>
                 </div>
               </div>
@@ -330,7 +331,10 @@ export function ShortsCreatorClient({ episode }: { episode: any }) {
           </div>
           <h3 className="text-2xl font-medium text-zinc-100">Short Successfully Published!</h3>
           <p className="text-zinc-400">The short has been exported and dispatched to your connected channels.</p>
-          <Button className="mt-4 bg-zinc-800 hover:bg-zinc-700" onClick={() => setPhase('REVIEW')}>
+          <Button className="mt-4 bg-zinc-800 hover:bg-zinc-700" onClick={() => {
+            setPhase('REVIEW');
+            if (folderId) loadShorts(folderId);
+          }}>
             Review More Shorts
           </Button>
         </div>

@@ -45,10 +45,23 @@ export async function pollShortsTask(taskId: string, episodeId: string) {
   return { status: taskStatus.status };
 }
 
-export async function getGeneratedShorts(folderId: string) {
+export async function getGeneratedShorts(folderId: string, episodeId: string) {
   // Call Klap to get the list of projects
   const projects = await klapApi.getProjects(folderId);
-  return projects;
+  
+  // Check Supabase for existing exported/approved shorts
+  const supabase = await createClient();
+  const { data: existingShorts } = await supabase
+    .from('episode_shorts')
+    .select('klap_project_id')
+    .eq('episode_id', episodeId);
+
+  const exportedIds = new Set(existingShorts?.map((s) => s.klap_project_id) || []);
+
+  return projects.map((p: any) => ({
+    ...p,
+    is_exported: exportedIds.has(p.id),
+  }));
 }
 
 export async function exportShort(folderId: string, projectId: string) {
