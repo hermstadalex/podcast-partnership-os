@@ -2,7 +2,9 @@
 
 import { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
-import { Loader2, Video, CheckCircle2, XCircle, Share2 } from 'lucide-react';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import { Loader2, Video, CheckCircle2, XCircle, Share2, ArrowLeft, Play, Pencil } from 'lucide-react';
 import { toast } from 'sonner';
 import { 
   startShortsGeneration, 
@@ -14,7 +16,7 @@ import {
   publishShortToZernio 
 } from '@/lib/actions/shorts-actions';
 
-type Phase = 'INIT' | 'PROCESSING' | 'REVIEW' | 'EXPORTING' | 'PUBLISHING' | 'DONE';
+type Phase = 'INIT' | 'PROCESSING' | 'REVIEW' | 'EXPORTING' | 'PREVIEW' | 'PUBLISHING' | 'DONE';
 
 export function ShortsCreatorClient({ episode }: { episode: any }) {
   const [phase, setPhase] = useState<Phase>('INIT');
@@ -23,15 +25,19 @@ export function ShortsCreatorClient({ episode }: { episode: any }) {
   const [shorts, setShorts] = useState<any[]>([]);
   const [activeShort, setActiveShort] = useState<any | null>(null);
   
+  // Preview state
+  const [previewVideoUrl, setPreviewVideoUrl] = useState<string>('');
+  const [previewTitle, setPreviewTitle] = useState<string>('');
+  const [previewDescription, setPreviewDescription] = useState<string>('');
+  const [savedShortRecord, setSavedShortRecord] = useState<any>(null);
+  
   // Start flow on mount if we don't already have a folder ID
   useEffect(() => {
     if (folderId) {
       setPhase('REVIEW');
       loadShorts(folderId);
-    } else {
-      initiateGeneration();
     }
-  }, [folderId]);
+  }, []);
 
   const initiateGeneration = async () => {
     setPhase('PROCESSING');
@@ -56,7 +62,6 @@ export function ShortsCreatorClient({ episode }: { episode: any }) {
         toast.error('Klap processing failed.');
         setPhase('INIT');
       } else {
-        // Continue polling every 15 seconds
         setTimeout(() => pollForCompletion(id), 15000);
       }
     } catch (e) {
@@ -68,20 +73,21 @@ export function ShortsCreatorClient({ episode }: { episode: any }) {
   const loadShorts = async (fId: string) => {
     try {
       const projects = await getGeneratedShorts(fId);
-      // Sort by virality score descending
-      const sorted = projects.sort((a: any, b: any) => (b.virality_score || 0) - (a.virality_score || 0));
+      const sorted = (Array.isArray(projects) ? projects : []).sort(
+        (a: any, b: any) => (b.virality_score || 0) - (a.virality_score || 0)
+      );
       setShorts(sorted);
     } catch (e: any) {
       toast.error(`Failed to load generated shorts: ${e.message}`);
     }
   };
 
-  const handleApprove = async (short: any) => {
+  const handleExport = async (short: any) => {
     setActiveShort(short);
     setPhase('EXPORTING');
     try {
-      const exportId = await exportShort(folderId!, short.id);
-      pollForExport(exportId, short);
+      const exportResult = await exportShort(folderId!, short.id);
+      pollForExport(exportResult.id || exportResult, short);
     } catch (e: any) {
       toast.error(`Failed to start export: ${e.message}`);
       setPhase('REVIEW');
@@ -92,9 +98,17 @@ export function ShortsCreatorClient({ episode }: { episode: any }) {
     try {
       const res = await pollExportStatus(folderId!, short.id, eId);
       if (res.status === 'ready' || res.status === 'completed' || res.status === 'done') {
-        setPhase('PUBLISHING');
-        toast.success("Export complete! Publishing to platforms...");
-        await doPublish(short.id, res.src_url, short.name);
+        toast.success("Export complete! Generating AI metadata...");
+        // Save the short and get AI-generated title + description
+        const { description, short: savedShort } = await saveApprovedShort(
+          episode.id, short.id, res.src_url, short.name
+        );
+        // Transition to preview
+        setPreviewVideoUrl(res.src_url);
+        setPreviewTitle(savedShort.title || short.name || '');
+        setPreviewDescription(description || '');
+        setSavedShortRecord(savedShort);
+        setPhase('PREVIEW');
       } else if (res.status === 'error' || res.status === 'failed') {
         toast.error('Klap export failed.');
         setPhase('REVIEW');
@@ -107,19 +121,22 @@ export function ShortsCreatorClient({ episode }: { episode: any }) {
     }
   };
 
-  const doPublish = async (projectId: string, videoUrl: string, klapName: string) => {
+  const handlePublish = async () => {
+    setPhase('PUBLISHING');
     try {
-      // Save the short and get AI metadata
-      const { description, short } = await saveApprovedShort(episode.id, projectId, videoUrl, klapName);
-      
-      // Publish to Zernio
-      await publishShortToZernio(episode.id, short.id, short.title, description, videoUrl, ['youtube']);
-      
+      await publishShortToZernio(
+        episode.id,
+        savedShortRecord.id,
+        previewTitle,
+        previewDescription,
+        previewVideoUrl,
+        ['youtube']
+      );
       setPhase('DONE');
       toast.success("Short successfully published!");
     } catch (e: any) {
       toast.error(`Publishing failed: ${e.message}`);
-      setPhase('REVIEW');
+      setPhase('PREVIEW');
     }
   };
 
@@ -155,13 +172,11 @@ export function ShortsCreatorClient({ episode }: { episode: any }) {
               </div>
               <div className="p-4 flex-1 flex flex-col justify-between space-y-4">
                 <div className="space-y-3">
-                  {/* Virality Score */}
                   <div className="flex items-center gap-2">
                     <span className="text-xs bg-fuchsia-500/20 text-fuchsia-400 px-2 py-1 rounded border border-fuchsia-500/30 font-semibold">
                       Virality: {Math.round((short.virality_score || 0) * 100)}%
                     </span>
                   </div>
-                  {/* Score Explanation */}
                   {short.virality_score_explanation && (
                     <p className="text-xs text-zinc-400 leading-relaxed line-clamp-3">
                       {short.virality_score_explanation}
@@ -179,9 +194,9 @@ export function ShortsCreatorClient({ episode }: { episode: any }) {
                   </Button>
                   <Button 
                     className="bg-emerald-600 hover:bg-emerald-500 text-white"
-                    onClick={() => handleApprove(short)}
+                    onClick={() => handleExport(short)}
                   >
-                    <CheckCircle2 className="w-4 h-4 mr-2" />
+                    <Play className="w-4 h-4 mr-2" />
                     Export
                   </Button>
                 </div>
@@ -196,16 +211,96 @@ export function ShortsCreatorClient({ episode }: { episode: any }) {
         </div>
       )}
 
-      {(phase === 'EXPORTING' || phase === 'PUBLISHING') && (
+      {phase === 'EXPORTING' && (
         <div className="flex flex-col items-center justify-center space-y-4 py-20 border border-zinc-800 rounded-xl bg-zinc-900/30">
           <Loader2 className="w-12 h-12 text-emerald-500 animate-spin" />
-          <h3 className="text-xl font-medium text-zinc-100">
-            {phase === 'EXPORTING' ? 'Rendering final video without watermarks...' : 'Generating AI metadata and publishing to Zernio...'}
-          </h3>
+          <h3 className="text-xl font-medium text-zinc-100">Rendering final video...</h3>
           <p className="text-zinc-400 text-center max-w-md">
-            {phase === 'EXPORTING' 
-              ? 'Klap is processing the high-quality export. This usually takes a minute.'
-              : 'Our AI is writing viral descriptions and syncing with your YouTube Shorts integration.'}
+            Klap is processing the high-quality export. This usually takes a minute or two.
+          </p>
+        </div>
+      )}
+
+      {/* PREVIEW PHASE: Video Player + Editable AI Metadata */}
+      {phase === 'PREVIEW' && (
+        <div className="space-y-6">
+          <div className="flex items-center gap-3">
+            <Button variant="outline" size="sm" className="border-zinc-700 text-zinc-300" onClick={() => setPhase('REVIEW')}>
+              <ArrowLeft className="w-4 h-4 mr-1" />
+              Back to Shorts
+            </Button>
+            <h3 className="text-lg font-semibold text-zinc-100">Preview & Publish</h3>
+          </div>
+
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+            {/* Left: Video Player */}
+            <div className="border border-zinc-800 rounded-xl bg-zinc-900/50 overflow-hidden">
+              <div className="aspect-[9/16] max-h-[500px] bg-black flex items-center justify-center">
+                <video
+                  src={previewVideoUrl}
+                  controls
+                  autoPlay
+                  className="w-full h-full object-contain"
+                />
+              </div>
+            </div>
+
+            {/* Right: Editable Metadata + Publish Controls */}
+            <div className="space-y-5">
+              <div className="border border-zinc-800 rounded-xl bg-zinc-900/50 p-5 space-y-4">
+                <h4 className="text-sm font-semibold text-zinc-200 flex items-center gap-2">
+                  <Pencil className="w-4 h-4 text-fuchsia-400" />
+                  AI-Generated Metadata
+                </h4>
+
+                <div>
+                  <Label className="text-xs text-zinc-400 mb-1.5 block">YouTube Short Title</Label>
+                  <Input
+                    value={previewTitle}
+                    onChange={(e) => setPreviewTitle(e.target.value)}
+                    className="bg-zinc-950 border-zinc-800 text-zinc-100 focus-visible:ring-fuchsia-500 font-semibold"
+                  />
+                </div>
+
+                <div>
+                  <Label className="text-xs text-zinc-400 mb-1.5 block">YouTube Short Description</Label>
+                  <textarea
+                    value={previewDescription}
+                    onChange={(e) => setPreviewDescription(e.target.value)}
+                    rows={6}
+                    className="w-full bg-zinc-950 border border-zinc-800 rounded-md p-3 text-sm text-zinc-300 resize-none focus:outline-none focus:ring-1 focus:ring-fuchsia-500"
+                  />
+                </div>
+              </div>
+
+              <div className="grid grid-cols-2 gap-3">
+                <Button
+                  variant="outline"
+                  className="border-zinc-700 hover:bg-zinc-800 text-zinc-300 py-5"
+                  onClick={() => setPhase('REVIEW')}
+                >
+                  <XCircle className="w-4 h-4 mr-2" />
+                  Discard
+                </Button>
+                <Button
+                  className="bg-emerald-600 hover:bg-emerald-500 text-white py-5 font-bold shadow-lg shadow-emerald-500/20"
+                  onClick={handlePublish}
+                >
+                  <Share2 className="w-4 h-4 mr-2" />
+                  Publish to YouTube
+                </Button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {phase === 'PUBLISHING' && (
+        <div className="flex flex-col items-center justify-center space-y-4 py-20 border border-zinc-800 rounded-xl bg-zinc-900/30">
+          <Loader2 className="w-12 h-12 text-emerald-500 animate-spin" />
+          <h3 className="text-xl font-medium text-zinc-100">Publishing to YouTube Shorts...</h3>
+          <p className="text-zinc-400 text-center max-w-md">
+            Syncing with your Zernio-connected YouTube account.
           </p>
         </div>
       )}
