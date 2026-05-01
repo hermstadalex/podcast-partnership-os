@@ -5,13 +5,13 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
-import { Checkbox } from '@/components/ui/checkbox';
 import { createClient } from '@/lib/supabase/client';
-import { Dropzone, DropzoneContent, DropzoneEmptyState, useSupabaseUpload } from '@/components/dropzone';
+import { Dropzone, DropzoneContent, DropzoneEmptyState } from '@/components/dropzone';
+import { useSupabaseUpload } from '@/hooks/use-supabase-upload';
 import { generateViralAssetsAction } from '@/lib/actions/viral-actions';
 import { createZernioPostAction, type ZernioPublishRequest } from '@/lib/actions/publish-wizard-actions';
 import { toast } from 'sonner';
-import { Wand2, Upload, CalendarClock, Share2, Youtube, Instagram, Music, Loader2, ArrowRight } from 'lucide-react';
+import { Wand2, Upload, CalendarClock, Share2, Video, Camera, Music, Loader2, ArrowRight } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 
 export function ZernioPublishWizard({ shows }: { shows: any[] }) {
@@ -260,14 +260,16 @@ export function ZernioPublishWizard({ shows }: { shows: any[] }) {
                     <div className="flex flex-wrap gap-4 mt-2">
                       {zernioAccounts.map(acc => (
                         <div key={acc.id} className="flex items-center gap-2">
-                          <Checkbox 
+                          <input 
+                            type="checkbox"
+                            className="h-4 w-4 rounded border-zinc-800 bg-zinc-950 text-blue-600 focus:ring-blue-500"
                             checked={selectedPlatforms.includes(acc.platform)} 
-                            onCheckedChange={() => togglePlatform(acc.platform)}
+                            onChange={() => togglePlatform(acc.platform)}
                             id={`plat-${acc.id}`}
                           />
                           <Label htmlFor={`plat-${acc.id}`} className="capitalize flex items-center gap-1 cursor-pointer">
-                            {acc.platform === 'youtube' && <Youtube className="w-3 h-3 text-red-500"/>}
-                            {acc.platform === 'instagram' && <Instagram className="w-3 h-3 text-pink-500"/>}
+                            {acc.platform === 'youtube' && <Video className="w-3 h-3 text-red-500"/>}
+                            {acc.platform === 'instagram' && <Camera className="w-3 h-3 text-pink-500"/>}
                             {acc.platform === 'tiktok' && <Music className="w-3 h-3 text-teal-400"/>}
                             {acc.platform}
                           </Label>
@@ -332,7 +334,7 @@ export function ZernioPublishWizard({ shows }: { shows: any[] }) {
                 {selectedPlatforms.includes('youtube') && (
                   <div className="space-y-4 p-5 rounded-lg border border-red-900/30 bg-red-900/5">
                     <h3 className="text-lg font-bold flex items-center gap-2 text-red-400">
-                      <Youtube className="w-5 h-5" /> YouTube Shorts Optimization
+                      <Video className="w-5 h-5" /> YouTube Shorts Optimization
                     </h3>
                     <div className="space-y-2">
                       <Label>Viral Title</Label>
@@ -364,7 +366,7 @@ export function ZernioPublishWizard({ shows }: { shows: any[] }) {
                 {selectedPlatforms.includes('instagram') && (
                   <div className="space-y-4 p-5 rounded-lg border border-pink-900/30 bg-pink-900/5">
                     <h3 className="text-lg font-bold flex items-center gap-2 text-pink-400">
-                      <Instagram className="w-5 h-5" /> Instagram Reels Optimization
+                      <Camera className="w-5 h-5" /> Instagram Reels Optimization
                     </h3>
                     <div className="space-y-2">
                       <Label>Caption & Hashtags</Label>
