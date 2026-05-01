@@ -291,14 +291,24 @@ export function ZernioPublishWizard({ shows }: { shows: any[] }) {
               </div>
             </div>
 
-            <div className="flex justify-end pt-4 border-t border-zinc-800">
+            <div className="flex flex-col items-end pt-4 border-t border-zinc-800">
+              {upload.files.length > 0 && !upload.isSuccess && !upload.loading && (
+                <div className="text-sm text-amber-500 mb-3 font-medium bg-amber-500/10 px-3 py-1.5 rounded-md border border-amber-500/20">
+                  ⚠️ Don't forget to click the "Upload files" button in the dotted box above!
+                </div>
+              )}
+              {upload.loading && (
+                <div className="text-sm text-blue-400 mb-3 font-medium">
+                  Uploading video... Please wait.
+                </div>
+              )}
               <Button 
                 onClick={handleGenerate} 
                 disabled={!videoUrl || !topicSummary || !selectedShowId || selectedPlatforms.length === 0}
                 className="bg-blue-600 hover:bg-blue-700 text-white"
               >
                 <Wand2 className="w-4 h-4 mr-2" />
-                Generate Viral Assets
+                {(!videoUrl && upload.files.length > 0) ? 'Waiting for video upload...' : 'Generate Viral Assets'}
               </Button>
             </div>
           </div>
