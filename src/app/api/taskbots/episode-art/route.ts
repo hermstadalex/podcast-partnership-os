@@ -24,6 +24,7 @@ export async function POST(req: Request) {
     }
 
     let baseImageUrl = '';
+    const supabase = await createClient();
 
     if (showId === 'guest') {
       if (!guestReferenceUrl) {
@@ -34,7 +35,6 @@ export async function POST(req: Request) {
       }
       baseImageUrl = guestReferenceUrl;
     } else {
-      const supabase = await createClient();
       const { data: show, error: showError } = await supabase
         .from('shows')
         .select('cover_art, youtube_reference_art, podcast_reference_art, id')
