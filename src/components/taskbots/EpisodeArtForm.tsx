@@ -31,6 +31,7 @@ export function EpisodeArtForm({ shows, initialDraft, autoRun }: { shows: Show[]
   const [isUploading, setIsUploading] = useState(false);
   
   const [generatedImages, setGeneratedImages] = useState<{ podcast?: string, youtube?: string }>({});
+  const [guestReferenceUrl, setGuestReferenceUrl] = useState<string | null>(null);
   
   // Ref to track if autorun has already fired to prevent strict mode double-firing
   const autoRunFired = useRef(false);
@@ -39,9 +40,11 @@ export function EpisodeArtForm({ shows, initialDraft, autoRun }: { shows: Show[]
   const [localShows, setLocalShows] = useState<Show[]>(shows);
 
   const activeShow = localShows.find(s => s.id === selectedShowId);
-  const activeReferenceUrl = format === 'youtube-thumbnail' 
-      ? activeShow?.youtube_reference_art 
-      : activeShow?.podcast_reference_art;
+  const activeReferenceUrl = selectedShowId === 'guest' 
+      ? guestReferenceUrl
+      : (format === 'youtube-thumbnail' 
+          ? activeShow?.youtube_reference_art 
+          : activeShow?.podcast_reference_art);
 
   // When podcast-only mode, force podcast-art format
   useEffect(() => {
@@ -63,13 +66,16 @@ export function EpisodeArtForm({ shows, initialDraft, autoRun }: { shows: Show[]
 
   const handleUploadReference = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
-    if (!file || !activeShow) return;
+    if (!file) return;
+    if (selectedShowId !== 'guest' && !activeShow) return;
 
     setIsUploading(true);
     try {
       const supabase = createClient();
       const fileExt = file.name.split('.').pop();
-      const fileName = `${activeShow.id}-${format}-${Date.now()}.${fileExt}`;
+      const fileName = selectedShowId === 'guest'
+        ? `guest-${format}-${Date.now()}.${fileExt}`
+        : `${activeShow!.id}-${format}-${Date.now()}.${fileExt}`;
       const filePath = `references/${fileName}`;
 
       const { error: uploadError } = await supabase.storage
@@ -84,20 +90,24 @@ export function EpisodeArtForm({ shows, initialDraft, autoRun }: { shows: Show[]
 
       if (!data.publicUrl) throw new Error('Failed to generate public URL');
 
-      const updatePayload = format === 'youtube-thumbnail'
-        ? { youtube_reference_art: data.publicUrl }
-        : { podcast_reference_art: data.publicUrl };
+      if (selectedShowId === 'guest') {
+        setGuestReferenceUrl(data.publicUrl);
+      } else {
+        const updatePayload = format === 'youtube-thumbnail'
+          ? { youtube_reference_art: data.publicUrl }
+          : { podcast_reference_art: data.publicUrl };
 
-      await updateShowMetadata(activeShow.id, updatePayload);
+        await updateShowMetadata(activeShow!.id, updatePayload);
 
-      setLocalShows(prev => prev.map(s => {
-        if (s.id === activeShow.id) {
-           return { ...s, ...updatePayload };
-        }
-        return s;
-      }));
+        setLocalShows(prev => prev.map(s => {
+          if (s.id === activeShow!.id) {
+             return { ...s, ...updatePayload };
+          }
+          return s;
+        }));
+      }
 
-      toast.success('Reference image uploaded and saved successfully!');
+      toast.success('Reference image uploaded successfully!');
     } catch (err: any) {
       console.error(err);
       toast.error('Failed to upload image: ' + err.message);
@@ -108,7 +118,7 @@ export function EpisodeArtForm({ shows, initialDraft, autoRun }: { shows: Show[]
 
   const handleGenerate = async () => {
     if (!selectedShowId || !title) {
-        toast.error('Please select a show and enter a title.');
+        toast.error('Please select a show/guest mode and enter a title.');
         return;
     }
 
@@ -119,9 +129,11 @@ export function EpisodeArtForm({ shows, initialDraft, autoRun }: { shows: Show[]
     try {
       for (const targetFormat of formatsToRun) {
         // Only run if the show has a reference image for this format
-        const targetRef = targetFormat === 'youtube-thumbnail' 
-          ? activeShow?.youtube_reference_art 
-          : activeShow?.podcast_reference_art;
+        const targetRef = selectedShowId === 'guest'
+          ? guestReferenceUrl
+          : (targetFormat === 'youtube-thumbnail' 
+              ? activeShow?.youtube_reference_art 
+              : activeShow?.podcast_reference_art);
         
         if (!targetRef) {
           toast.warning(`Skipping ${targetFormat}: No reference template configured.`);
@@ -132,7 +144,8 @@ export function EpisodeArtForm({ shows, initialDraft, autoRun }: { shows: Show[]
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
-            showId: selectedShowId,
+            showId: selectedShowId === 'guest' ? 'guest' : selectedShowId,
+            guestReferenceUrl: selectedShowId === 'guest' ? guestReferenceUrl : undefined,
             title,
             format: targetFormat
           })
@@ -242,6 +255,7 @@ export function EpisodeArtForm({ shows, initialDraft, autoRun }: { shows: Show[]
                   {show.title}
                 </option>
               ))}
+              <option value="guest">Guest Mode (Provide own reference)</option>
             </select>
           </div>
 
@@ -311,13 +325,13 @@ export function EpisodeArtForm({ shows, initialDraft, autoRun }: { shows: Show[]
             </div>
           )}
 
-          {!activeShow && (
+          {!activeShow && selectedShowId !== 'guest' && (
              <div className="p-4 rounded-md border border-zinc-800 bg-zinc-950/50 text-sm text-zinc-400">
                Select a show to view reference configurations.
              </div>
           )}
 
-          {activeShow && !activeReferenceUrl && !generateBoth && (
+          {(activeShow || selectedShowId === 'guest') && !activeReferenceUrl && !generateBoth && (
              <div className="p-5 rounded-md border-2 border-dashed border-zinc-700 bg-zinc-950 text-center">
                 <Upload className="h-6 w-6 text-zinc-500 mx-auto mb-2" />
                 <h3 className="text-sm font-medium text-zinc-200">Missing Template Reference</h3>
@@ -337,7 +351,7 @@ export function EpisodeArtForm({ shows, initialDraft, autoRun }: { shows: Show[]
              </div>
           )}
           
-          {activeShow && activeReferenceUrl && !generateBoth && (
+          {(activeShow || selectedShowId === 'guest') && activeReferenceUrl && !generateBoth && (
             <div className="flex items-center gap-3 p-3 rounded-md border border-zinc-800 bg-zinc-950/50">
                {/* eslint-disable-next-line @next/next/no-img-element */}
                <img src={activeReferenceUrl} alt="Base Art Preview" className={`h-12 border border-zinc-800 ${format === 'youtube-thumbnail' ? 'aspect-video object-cover' : 'aspect-square object-cover'} rounded-sm`} />

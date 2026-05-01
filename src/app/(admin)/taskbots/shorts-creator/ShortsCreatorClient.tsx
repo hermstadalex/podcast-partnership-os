@@ -8,6 +8,7 @@ import { Loader2, Video, CheckCircle2, XCircle, Share2, ArrowLeft, Play, Pencil 
 import { toast } from 'sonner';
 import { 
   startShortsGeneration, 
+  startStandaloneShortsGeneration,
   pollShortsTask, 
   getGeneratedShorts, 
   exportShort, 
@@ -18,10 +19,11 @@ import {
 
 type Phase = 'INIT' | 'PROCESSING' | 'REVIEW' | 'EXPORTING' | 'PREVIEW' | 'PUBLISHING' | 'DONE';
 
-export function ShortsCreatorClient({ episode }: { episode: any }) {
+export function ShortsCreatorClient({ episode, shows }: { episode?: any, shows?: any[] }) {
   const [phase, setPhase] = useState<Phase>('INIT');
   const [taskId, setTaskId] = useState<string | null>(null);
-  const [folderId, setFolderId] = useState<string | null>(episode.klap_folder_id || null);
+  const [folderId, setFolderId] = useState<string | null>(episode?.klap_folder_id || null);
+  const [videoUrl, setVideoUrl] = useState<string>('');
   const [shorts, setShorts] = useState<any[]>([]);
   const [activeShort, setActiveShort] = useState<any | null>(null);
   
@@ -40,9 +42,18 @@ export function ShortsCreatorClient({ episode }: { episode: any }) {
   }, []);
 
   const initiateGeneration = async () => {
+    if (!episode && !videoUrl) {
+      toast.error('Please provide a Video URL for standalone generation.');
+      return;
+    }
     setPhase('PROCESSING');
     try {
-      const id = await startShortsGeneration(episode.id);
+      let id;
+      if (episode) {
+        id = await startShortsGeneration(episode.id);
+      } else {
+        id = await startStandaloneShortsGeneration(videoUrl);
+      }
       setTaskId(id);
       pollForCompletion(id);
     } catch (e: any) {
@@ -53,7 +64,7 @@ export function ShortsCreatorClient({ episode }: { episode: any }) {
 
   const pollForCompletion = async (id: string) => {
     try {
-      const res = await pollShortsTask(id, episode.id);
+      const res = await pollShortsTask(id, episode?.id || 'guest');
       if (res.status === 'ready' || res.status === 'completed' || res.status === 'done') {
         setFolderId(res.folderId!);
         loadShorts(res.folderId!);
@@ -72,7 +83,7 @@ export function ShortsCreatorClient({ episode }: { episode: any }) {
 
   const loadShorts = async (fId: string) => {
     try {
-      const projects = await getGeneratedShorts(fId, episode.id);
+      const projects = await getGeneratedShorts(fId, episode?.id || 'guest');
       const sorted = (Array.isArray(projects) ? projects : []).sort(
         (a: any, b: any) => (b.virality_score || 0) - (a.virality_score || 0)
       );
@@ -109,7 +120,7 @@ export function ShortsCreatorClient({ episode }: { episode: any }) {
       toast.success("Export complete! Generating AI metadata...");
       try {
         const { description, short: savedShort } = await saveApprovedShort(
-          episode.id, short.id, res.src_url, short.name
+          episode?.id || 'guest', short.id, res.src_url, short.name
         );
         setPreviewVideoUrl(res.src_url);
         setPreviewTitle(savedShort.title || short.name || '');
@@ -140,6 +151,10 @@ export function ShortsCreatorClient({ episode }: { episode: any }) {
       setPhase('REVIEW');
       return;
     }
+    if (!episode) {
+      toast.info('Publish routing will be connected in Phase 3. For now, use the download link.');
+      return;
+    }
     setPhase('PUBLISHING');
     try {
       await publishShortToZernio(
@@ -161,9 +176,28 @@ export function ShortsCreatorClient({ episode }: { episode: any }) {
   return (
     <div className="space-y-6">
       {phase === 'INIT' && (
-        <div className="text-center py-12">
-          <Button onClick={initiateGeneration} className="bg-fuchsia-600 hover:bg-fuchsia-500">
-            <Video className="w-4 h-4 mr-2" />
+        <div className="flex flex-col items-center justify-center py-12">
+          {!episode && (
+            <div className="w-full max-w-md space-y-4 mb-8 p-6 border border-zinc-800 rounded-xl bg-zinc-900/50">
+              <h3 className="text-sm font-semibold text-zinc-100 flex items-center">
+                <Video className="w-4 h-4 mr-2 text-fuchsia-400" />
+                Standalone Mode
+              </h3>
+              <div className="space-y-2">
+                <Label className="text-zinc-400 text-xs">Video Download URL (MP4)</Label>
+                <Input 
+                  value={videoUrl}
+                  onChange={(e) => setVideoUrl(e.target.value)}
+                  placeholder="https://..."
+                  className="bg-zinc-950 border-zinc-800 focus-visible:ring-fuchsia-500"
+                />
+                <p className="text-[10px] text-zinc-500">Must be a direct link to a video file for Klap to process.</p>
+              </div>
+            </div>
+          )}
+          
+          <Button onClick={initiateGeneration} disabled={!episode && !videoUrl} className="bg-fuchsia-600 hover:bg-fuchsia-500 py-6 px-8 font-semibold shadow-lg shadow-fuchsia-500/20">
+            <Video className="w-5 h-5 mr-2" />
             Start AI Generation
           </Button>
         </div>
@@ -292,7 +326,7 @@ export function ShortsCreatorClient({ episode }: { episode: any }) {
                 </div>
               </div>
 
-              <div className="grid grid-cols-2 gap-3">
+              <div className={`grid ${episode ? 'grid-cols-2' : 'grid-cols-2'} gap-3`}>
                 <Button
                   variant="outline"
                   className="border-zinc-700 hover:bg-zinc-800 text-zinc-300 py-5"
@@ -301,13 +335,29 @@ export function ShortsCreatorClient({ episode }: { episode: any }) {
                   <XCircle className="w-4 h-4 mr-2" />
                   Discard
                 </Button>
-                <Button
-                  className="bg-emerald-600 hover:bg-emerald-500 text-white py-5 font-bold shadow-lg shadow-emerald-500/20"
-                  onClick={handlePublish}
-                >
-                  <Share2 className="w-4 h-4 mr-2" />
-                  Publish to YouTube
-                </Button>
+                {episode ? (
+                  <Button
+                    className="bg-emerald-600 hover:bg-emerald-500 text-white py-5 font-bold shadow-lg shadow-emerald-500/20"
+                    onClick={handlePublish}
+                  >
+                    <Share2 className="w-4 h-4 mr-2" />
+                    Publish to Zernio
+                  </Button>
+                ) : (
+                  <Button
+                    className="bg-fuchsia-600 hover:bg-fuchsia-500 text-white py-5 font-bold shadow-lg shadow-fuchsia-500/20"
+                    onClick={() => {
+                      const a = document.createElement('a');
+                      a.href = previewVideoUrl;
+                      a.target = '_blank';
+                      a.download = `short-${Date.now()}.mp4`;
+                      a.click();
+                    }}
+                  >
+                    <Share2 className="w-4 h-4 mr-2" />
+                    Download Video
+                  </Button>
+                )}
               </div>
             </div>
           </div>

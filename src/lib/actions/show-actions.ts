@@ -9,7 +9,7 @@ import {
 
 export async function getShows() {
   const supabase = await createClient();
-  const { data } = await supabase.from('shows').select('*').order('created_at', { ascending: false });
+  const { data } = await supabase.from('shows').select('*').order('title', { ascending: true });
   return data || [];
 }
 

@@ -6,7 +6,7 @@ export const maxDuration = 60; // Extend Vercel timeout for heavy AI image infer
 
 export async function POST(req: Request) {
   try {
-    const { showId, title, format } = await req.json();
+    const { showId, guestReferenceUrl, title, format } = await req.json();
 
     if (!showId || !title || !format) {
       return NextResponse.json(
@@ -23,23 +23,35 @@ export async function POST(req: Request) {
       );
     }
 
-    const supabase = await createClient();
-    const { data: show, error: showError } = await supabase
-      .from('shows')
-      .select('cover_art, youtube_reference_art, podcast_reference_art, id')
-      .eq('id', showId)
-      .single();
+    let baseImageUrl = '';
 
-    if (showError || !show) {
-      return NextResponse.json(
-        { error: 'Show not found' },
-        { status: 404 }
-      );
+    if (showId === 'guest') {
+      if (!guestReferenceUrl) {
+        return NextResponse.json(
+          { error: 'Guest mode requires a guestReferenceUrl' },
+          { status: 400 }
+        );
+      }
+      baseImageUrl = guestReferenceUrl;
+    } else {
+      const supabase = await createClient();
+      const { data: show, error: showError } = await supabase
+        .from('shows')
+        .select('cover_art, youtube_reference_art, podcast_reference_art, id')
+        .eq('id', showId)
+        .single();
+
+      if (showError || !show) {
+        return NextResponse.json(
+          { error: 'Show not found' },
+          { status: 404 }
+        );
+      }
+
+      baseImageUrl = format === 'youtube-thumbnail'
+          ? (show.youtube_reference_art || show.cover_art)
+          : (show.podcast_reference_art || show.cover_art);
     }
-
-    const baseImageUrl = format === 'youtube-thumbnail'
-        ? (show.youtube_reference_art || show.cover_art)
-        : (show.podcast_reference_art || show.cover_art);
 
     if (!baseImageUrl) {
       return NextResponse.json(

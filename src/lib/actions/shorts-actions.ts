@@ -5,6 +5,9 @@ import { klapApi } from '@/lib/integrations/klap';
 import { generateShortsAssetsWithGemini } from '@/lib/integrations/gemini';
 
 export async function startShortsGeneration(episodeId: string) {
+  if (episodeId === 'guest') {
+    throw new Error("startShortsGeneration requires an episode ID. Use startStandaloneShortsGeneration for guest mode.");
+  }
   const supabase = await createClient();
   const { data: episode } = await supabase
     .from('episodes')
@@ -17,10 +20,12 @@ export async function startShortsGeneration(episodeId: string) {
 
   // Call Klap API
   const task = await klapApi.generateShorts(episode.media_url);
+  return task.id;
+}
 
-  // We could save the task ID to the database if we want long-term polling,
-  // but Klap returns output_id when done. 
-  // Let's just return the task ID to the client so it can poll.
+export async function startStandaloneShortsGeneration(videoUrl: string) {
+  if (!videoUrl) throw new Error("No media URL provided");
+  const task = await klapApi.generateShorts(videoUrl);
   return task.id;
 }
 
@@ -32,8 +37,10 @@ export async function pollShortsTask(taskId: string, episodeId: string) {
     const folderId = taskStatus.output_id || taskStatus.project_group_id || taskStatus.folder_id;
     
     if (folderId) {
-      const supabase = await createClient();
-      await supabase.from('episodes').update({ klap_folder_id: folderId }).eq('id', episodeId);
+      if (episodeId !== 'guest') {
+        const supabase = await createClient();
+        await supabase.from('episodes').update({ klap_folder_id: folderId }).eq('id', episodeId);
+      }
       return { status: 'completed', folderId };
     }
   }
@@ -49,6 +56,13 @@ export async function getGeneratedShorts(folderId: string, episodeId: string) {
   // Call Klap to get the list of projects
   const projects = await klapApi.getProjects(folderId);
   
+  if (episodeId === 'guest') {
+    return projects.map((p: any) => ({
+      ...p,
+      is_exported: false,
+    }));
+  }
+
   // Check Supabase for existing exported/approved shorts
   const supabase = await createClient();
   const { data: existingShorts } = await supabase
@@ -77,20 +91,34 @@ export async function pollExportStatus(folderId: string, projectId: string, expo
 
 export async function saveApprovedShort(episodeId: string, projectId: string, videoUrl: string, klapName: string) {
   console.log('[SHORTS] saveApprovedShort called:', { episodeId, projectId, videoUrl, klapName });
-  const supabase = await createClient();
-  const { data: episode, error: epError } = await supabase.from('episodes').select('youtube_video_url').eq('id', episodeId).single();
-  if (epError) console.error('[SHORTS] Episode fetch error:', epError);
+  
+  let episodeYoutubeUrl = undefined;
+  
+  if (episodeId !== 'guest') {
+    const supabase = await createClient();
+    const { data: episode, error: epError } = await supabase.from('episodes').select('youtube_video_url').eq('id', episodeId).single();
+    if (epError) console.error('[SHORTS] Episode fetch error:', epError);
+    episodeYoutubeUrl = episode?.youtube_video_url;
+  }
 
   // Generate Gemini metadata
   let metadata: any;
   try {
-    metadata = await generateShortsAssetsWithGemini(klapName, episode?.youtube_video_url || undefined);
+    metadata = await generateShortsAssetsWithGemini(klapName, episodeYoutubeUrl);
     console.log('[SHORTS] Gemini metadata generated:', metadata);
   } catch (gemErr) {
     console.error('[SHORTS] Gemini metadata generation failed:', gemErr);
     metadata = { title: klapName, description: '' };
   }
 
+  if (episodeId === 'guest') {
+     return { 
+       short: { id: `guest-${projectId}`, title: metadata.title, video_url: videoUrl }, 
+       description: metadata.description 
+     };
+  }
+
+  const supabase = await createClient();
   const { data: short, error: insertError } = await supabase.from('episode_shorts').insert({
     episode_id: episodeId,
     klap_project_id: projectId,
