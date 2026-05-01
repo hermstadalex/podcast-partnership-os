@@ -190,7 +190,7 @@ export function ShortsCreatorClient({ episode, shows }: { episode?: any, shows?:
 
       const { error: uploadError } = await supabase.storage
         .from('episodes_bucket')
-        .upload(filePath, file);
+        .upload(filePath, file, { upsert: true });
 
       if (uploadError) throw uploadError;
 

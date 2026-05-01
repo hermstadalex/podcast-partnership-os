@@ -77,7 +77,7 @@ export function ShownotesCreatorClient({ shows, initialEpisodeId }: { shows: any
 
       const { error: uploadError } = await supabase.storage
         .from('episodes_bucket')
-        .upload(filePath, file);
+        .upload(filePath, file, { upsert: true });
 
       if (uploadError) throw uploadError;
 

@@ -80,7 +80,7 @@ export function EpisodeArtForm({ shows, initialDraft, autoRun }: { shows: Show[]
 
       const { error: uploadError } = await supabase.storage
         .from('episodes_bucket')
-        .upload(filePath, file);
+        .upload(filePath, file, { upsert: true });
 
       if (uploadError) throw uploadError;
 
