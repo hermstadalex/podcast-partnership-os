@@ -21,6 +21,8 @@ export function ShownotesCreatorClient({ shows, initialEpisodeId }: { shows: any
   
   const [copied, setCopied] = useState<'title' | 'shownotes' | 'hashtags' | null>(null);
 
+  const [isUploading, setIsUploading] = useState(false);
+
   const handleGenerate = async () => {
     if (!mediaUrl && !context) {
       toast.error('Please provide a media URL or some context to generate shownotes.');
@@ -57,6 +59,41 @@ export function ShownotesCreatorClient({ shows, initialEpisodeId }: { shows: any
       toast.error(err.message || 'An error occurred during generation.');
     } finally {
       setIsGenerating(false);
+    }
+  };
+
+  const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    setIsUploading(true);
+    try {
+      const { createClient } = await import('@/lib/supabase/client');
+      const supabase = createClient();
+      
+      const fileExt = file.name.split('.').pop();
+      const fileName = `guest-media-${Date.now()}.${fileExt}`;
+      const filePath = `references/${fileName}`; // Using references folder since it's temporary guest media
+
+      const { error: uploadError } = await supabase.storage
+        .from('episodes_bucket')
+        .upload(filePath, file);
+
+      if (uploadError) throw uploadError;
+
+      const { data } = supabase.storage
+        .from('episodes_bucket')
+        .getPublicUrl(filePath);
+
+      if (!data.publicUrl) throw new Error('Failed to generate public URL');
+
+      setMediaUrl(data.publicUrl);
+      toast.success('Media uploaded successfully!');
+    } catch (err: any) {
+      console.error(err);
+      toast.error('Failed to upload media: ' + err.message);
+    } finally {
+      setIsUploading(false);
     }
   };
 
@@ -99,13 +136,32 @@ export function ShownotesCreatorClient({ shows, initialEpisodeId }: { shows: any
           </div>
 
           <div className="space-y-3">
-            <Label>Media URL</Label>
-            <Input 
-              value={mediaUrl}
-              onChange={(e) => setMediaUrl(e.target.value)}
-              placeholder="e.g. https://storage.googleapis.com/.../audio.mp3" 
-              className="bg-zinc-950 border-zinc-800 text-zinc-100 focus-visible:ring-cyan-500"
-            />
+            <Label>Media URL or Upload</Label>
+            <div className="flex items-center gap-2">
+              <Input 
+                value={mediaUrl}
+                onChange={(e) => setMediaUrl(e.target.value)}
+                placeholder="e.g. https://storage.googleapis.com/.../audio.mp3" 
+                className="bg-zinc-950 border-zinc-800 text-zinc-100 focus-visible:ring-cyan-500 flex-1"
+              />
+              <div className="relative">
+                <input
+                  type="file"
+                  accept="audio/*,video/*"
+                  onChange={handleFileUpload}
+                  disabled={isUploading}
+                  className="absolute inset-0 w-full h-full opacity-0 cursor-pointer disabled:cursor-not-allowed"
+                />
+                <Button 
+                  type="button" 
+                  variant="outline" 
+                  className="border-zinc-700 hover:bg-zinc-800"
+                  disabled={isUploading}
+                >
+                  {isUploading ? <Loader2 className="w-4 h-4 animate-spin" /> : 'Upload'}
+                </Button>
+              </div>
+            </div>
           </div>
 
           <div className="space-y-3">
