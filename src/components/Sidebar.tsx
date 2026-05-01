@@ -8,16 +8,37 @@ import { RealtimeAvatarStack } from '@/components/realtime-avatar-stack';
 export function Sidebar() {
   const pathname = usePathname();
 
-  const navItems = [
+  const mainNavItems = [
     { name: 'Command Center', href: '/', icon: LayoutDashboard },
     { name: 'Error Center', href: '/errors', icon: AlertTriangle },
     { name: 'Clients', href: '/clients', icon: Users },
     { name: 'Shows', href: '/shows', icon: Mic },
+    { name: 'Settings', href: '/settings', icon: Settings },
+  ];
+
+  const taskbotItems = [
     { name: 'Episode Artbot', href: '/taskbots/episode-art', icon: Paintbrush },
     { name: 'Shownotes Creator', href: '/taskbots/shownotes-creator', icon: FileText },
     { name: 'Shorts Creator', href: '/taskbots/shorts-creator', icon: Video },
-    { name: 'Settings', href: '/settings', icon: Settings },
   ];
+
+  const renderLink = (item: any) => {
+    const isActive = pathname === item.href;
+    return (
+      <Link
+        key={item.name}
+        href={item.href}
+        className={`flex items-center gap-3 px-3 py-2 rounded-md transition-colors ${
+          isActive 
+            ? 'bg-zinc-800 text-zinc-100' 
+            : 'text-zinc-400 hover:text-zinc-100 hover:bg-zinc-900'
+        }`}
+      >
+        <item.icon className="h-4 w-4" />
+        <span className="text-sm font-medium">{item.name}</span>
+      </Link>
+    );
+  };
 
   return (
     <div className="w-64 border-r border-zinc-800 bg-zinc-950/50 backdrop-blur-xl flex flex-col justify-between hidden md:flex">
@@ -30,23 +51,15 @@ export function Sidebar() {
         </div>
         
         <nav className="space-y-1">
-          {navItems.map((item) => {
-            const isActive = pathname === item.href;
-            return (
-              <Link
-                key={item.name}
-                href={item.href}
-                className={`flex items-center gap-3 px-3 py-2 rounded-md transition-colors ${
-                  isActive 
-                    ? 'bg-zinc-800 text-zinc-100' 
-                    : 'text-zinc-400 hover:text-zinc-100 hover:bg-zinc-900'
-                }`}
-              >
-                <item.icon className="h-4 w-4" />
-                <span className="text-sm font-medium">{item.name}</span>
-              </Link>
-            );
-          })}
+          {mainNavItems.map(renderLink)}
+
+          <div className="pt-6 pb-2">
+            <h4 className="px-3 text-xs font-semibold uppercase tracking-wider text-zinc-500">
+              TaskBots
+            </h4>
+          </div>
+
+          {taskbotItems.map(renderLink)}
         </nav>
       </div>
 
