@@ -131,11 +131,16 @@ export async function getDefaultDestinationAccount(
 
   const { data: account } = await supabase
     .from('zernio_accounts')
-    .select('id, external_account_id, platform')
+    .select('id, external_account_id, platform, zernio_profile_id')
     .eq('id', destination.zernio_account_id)
     .maybeSingle();
 
-  return (account || null) as PublishDestinationAccount | null;
+  return (account || null) as { 
+    id: string; 
+    external_account_id: string; 
+    platform?: string; 
+    zernio_profile_id?: string;
+  } | null;
 }
 
 export async function createPublishRun(

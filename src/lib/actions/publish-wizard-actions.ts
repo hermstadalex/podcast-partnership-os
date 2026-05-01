@@ -29,6 +29,7 @@ export async function createZernioPostAction(req: ZernioPublishRequest) {
   try {
     // 1. Build Zernio Payload
     const zernioPayload: ZernioPostPayload & { queuedFromProfile?: string; scheduledFor?: string } = {
+      profileId: req.profileId,
       content: req.caption,
       mediaItems: [{ type: 'video', url: req.mediaUrl }],
       platforms: req.platforms,

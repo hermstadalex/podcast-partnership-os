@@ -159,7 +159,15 @@ export async function publishShortToZernio(episodeId: string, shortId: string, t
 
   // Currently we just publish to YouTube as an example, but we can iterate over `platforms` if Zernio supports it natively.
   if (platforms.includes('youtube')) {
+    let profileId = defaultAccount?.zernio_profile_id;
+    if (!profileId) {
+      const { data: profile } = await supabase.from('zernio_profiles').select('id, external_profile_id').eq('client_id', targetShow.client_id).maybeSingle();
+      if (!profile || !profile.external_profile_id) throw new Error("No Zernio profile found for this show's client.");
+      profileId = profile.external_profile_id;
+    }
+
     const payload = zernioApi.constructYouTubeShortPayload(
+      profileId!,
       { title, description, video_url: videoUrl },
       defaultAccount
     );

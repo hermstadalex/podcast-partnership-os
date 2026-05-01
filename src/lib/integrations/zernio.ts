@@ -2,6 +2,7 @@ import 'server-only';
 import { ZernioPostResponseSchema, type ZernioPostResponse } from '@/lib/validation/zernio';
 
 export type ZernioPostPayload = {
+  profileId: string;
   content?: string;
   mediaItems?: Array<{
     type: string;
@@ -87,6 +88,7 @@ export class ZernioService {
    * Constructs the payload for a Zernio YouTube post.
    */
   constructYouTubePayload(
+    profileId: string,
     episode: { title: string; description: string; media_url: string },
     destinationAccount: { external_account_id: string; platform?: string | null } | null
   ): ZernioPostPayload {
@@ -96,6 +98,7 @@ export class ZernioService {
     }
 
     return {
+      profileId,
       content: episode.description,
       mediaItems: [{ type: 'video', url: episode.media_url }],
       publishNow: true,
@@ -116,6 +119,7 @@ export class ZernioService {
    * Constructs the payload for a Zernio YouTube Short post.
    */
   constructYouTubeShortPayload(
+    profileId: string,
     short: { title: string; description: string; video_url: string },
     destinationAccount: { external_account_id: string; platform?: string | null } | null
   ): ZernioPostPayload {
@@ -125,6 +129,7 @@ export class ZernioService {
     }
 
     return {
+      profileId,
       content: short.description,
       mediaItems: [{ type: 'video', url: short.video_url }],
       publishNow: true,

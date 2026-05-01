@@ -152,7 +152,15 @@ export async function dispatchEpisodePublish(episodeId: string, publishMode: 'fu
   let zernioPayload: any = null;
   
   if (publishMode === 'full') {
-    zernioPayload = zernioApi.constructYouTubePayload(episode, destinationAccount);
+    let profileId = destinationAccount?.zernio_profile_id;
+    if (!profileId) {
+      // Fallback: look up profile by client_id if we rely on env vars
+      const { data: profile } = await supabase.from('zernio_profiles').select('id, external_profile_id').eq('client_id', targetShow.client_id).maybeSingle();
+      if (!profile || !profile.external_profile_id) throw new Error("No Zernio profile found for this show's client.");
+      profileId = profile.external_profile_id;
+    }
+    
+    zernioPayload = zernioApi.constructYouTubePayload(profileId!, episode, destinationAccount);
     zernioRunId = await createPublishRun(supabase, episodeId, 'zernio', zernioPayload);
   }
 
