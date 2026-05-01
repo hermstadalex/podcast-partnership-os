@@ -73,7 +73,7 @@ export class ZernioService {
    */
   async getAccountsForProfile(profileId: string): Promise<any[]> {
     try {
-      const data = await this.fetchApi(`/profiles/${profileId}/accounts`);
+      const data = await this.fetchApi(`/accounts?profileId=${profileId}`);
       return data.accounts || data || [];
     } catch (err: any) {
       console.warn(`[ZERNIO] Failed to fetch accounts for profile ${profileId}: ${err.message}`);
