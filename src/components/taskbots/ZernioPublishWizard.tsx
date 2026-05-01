@@ -110,6 +110,19 @@ export function ZernioPublishWizard({ shows }: { shows: any[] }) {
     }
   }, [upload.isSuccess, upload.files, supabase, videoUrl]);
 
+  // Auto-upload when a file is selected
+  useEffect(() => {
+    if (
+      upload.files.length > 0 && 
+      !upload.loading && 
+      !upload.isSuccess && 
+      upload.files.every(f => f.errors.length === 0) &&
+      upload.errors.length === 0
+    ) {
+      upload.onUpload();
+    }
+  }, [upload.files, upload.loading, upload.isSuccess, upload.errors, upload.onUpload]);
+
   const handleGenerate = async () => {
     if (!videoUrl) return toast.error("Please wait for the video to finish uploading.");
     if (!topicSummary) return toast.error("Please provide a topic summary.");
@@ -292,23 +305,19 @@ export function ZernioPublishWizard({ shows }: { shows: any[] }) {
             </div>
 
             <div className="flex flex-col items-end pt-4 border-t border-zinc-800">
-              {upload.files.length > 0 && !upload.isSuccess && !upload.loading && (
-                <div className="text-sm text-amber-500 mb-3 font-medium bg-amber-500/10 px-3 py-1.5 rounded-md border border-amber-500/20">
-                  ⚠️ Don't forget to click the "Upload files" button in the dotted box above!
-                </div>
-              )}
               {upload.loading && (
-                <div className="text-sm text-blue-400 mb-3 font-medium">
+                <div className="text-sm text-blue-400 mb-3 font-medium flex items-center">
+                  <Loader2 className="w-4 h-4 mr-2 animate-spin" />
                   Uploading video... Please wait.
                 </div>
               )}
               <Button 
                 onClick={handleGenerate} 
-                disabled={!videoUrl || !topicSummary || !selectedShowId || selectedPlatforms.length === 0}
+                disabled={!videoUrl || !topicSummary || !selectedShowId || selectedPlatforms.length === 0 || upload.loading}
                 className="bg-blue-600 hover:bg-blue-700 text-white"
               >
                 <Wand2 className="w-4 h-4 mr-2" />
-                {(!videoUrl && upload.files.length > 0) ? 'Waiting for video upload...' : 'Generate Viral Assets'}
+                {upload.loading ? 'Uploading...' : (!videoUrl && upload.files.length > 0) ? 'Waiting for video upload...' : 'Generate Viral Assets'}
               </Button>
             </div>
           </div>
