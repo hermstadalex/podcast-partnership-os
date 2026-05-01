@@ -21,3 +21,7 @@ export {
   getSubmissionStatus,
   publishEpisodeToCaptivate
 } from '@/lib/actions/publish-actions';
+
+export {
+  syncZernioAccountsForClient
+} from '@/lib/actions/zernio-actions';

@@ -69,6 +69,19 @@ export class ZernioService {
   }
 
   /**
+   * Fetches the connected platform accounts (YouTube, TikTok, etc.) for a specific Zernio Profile.
+   */
+  async getAccountsForProfile(profileId: string): Promise<any[]> {
+    try {
+      const data = await this.fetchApi(`/profiles/${profileId}/accounts`);
+      return data.accounts || data || [];
+    } catch (err: any) {
+      console.warn(`[ZERNIO] Failed to fetch accounts for profile ${profileId}: ${err.message}`);
+      return [];
+    }
+  }
+
+  /**
    * Constructs the payload for a Zernio YouTube post.
    */
   constructYouTubePayload(

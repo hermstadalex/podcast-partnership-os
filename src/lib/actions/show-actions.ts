@@ -39,7 +39,35 @@ export async function syncShowsFromCaptivate() {
 
 export async function getShowMetadata(id: string) {
   const supabase = await createClient();
-  return await getShowByIdentifier(supabase, id);
+  const show = await getShowByIdentifier(supabase, id);
+  
+  if (!show) return null;
+
+  let zernioProfile = null;
+  let zernioAccounts = [];
+
+  if (show.client_id) {
+    const { data: profile } = await supabase
+      .from('zernio_profiles')
+      .select('*')
+      .eq('client_id', show.client_id)
+      .maybeSingle();
+      
+    if (profile) {
+      zernioProfile = profile;
+      const { data: accounts } = await supabase
+        .from('zernio_accounts')
+        .select('*')
+        .eq('zernio_profile_id', profile.id);
+      if (accounts) zernioAccounts = accounts;
+    }
+  }
+
+  return {
+    ...show,
+    zernio_profile: zernioProfile,
+    zernio_accounts: zernioAccounts
+  };
 }
 
 export async function updateShowMetadata(id: string, data: Record<string, unknown>) {
