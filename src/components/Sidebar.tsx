@@ -1,7 +1,7 @@
 'use client';
 
 import Link from 'next/link';
-import { Mic, LayoutDashboard, Users, Settings, AlertTriangle, Paintbrush, FileText, Video } from 'lucide-react';
+import { Mic, LayoutDashboard, Users, Settings, AlertTriangle, Paintbrush, FileText, Video, Share2 } from 'lucide-react';
 import { usePathname } from 'next/navigation';
 import { RealtimeAvatarStack } from '@/components/realtime-avatar-stack';
 
@@ -20,6 +20,7 @@ export function Sidebar() {
     { name: 'Episode Artbot', href: '/taskbots/episode-art', icon: Paintbrush },
     { name: 'Shownotes Creator', href: '/taskbots/shownotes-creator', icon: FileText },
     { name: 'Shorts Creator', href: '/taskbots/shorts-creator', icon: Video },
+    { name: 'Publish Wizard', href: '/taskbots/zernio-publish', icon: Share2 },
   ];
 
   const renderLink = (item: any) => {

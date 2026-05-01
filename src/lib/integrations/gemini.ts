@@ -219,3 +219,127 @@ Output strictly as a JSON object matching this schema:
   const resultText = genResponse?.text;
   return resultText ? JSON.parse(resultText) : { title: klapTopic, description: '' };
 }
+
+export type ViralPostAssetsResult = {
+  youtube: {
+    title: string;
+    description: string;
+    tags: string[];
+  };
+  tiktok: {
+    caption: string;
+  };
+  instagram: {
+    caption: string;
+  };
+};
+
+/**
+ * Generates viral assets (titles, descriptions, tags, captions) across multiple platforms
+ * from an uploaded media file and a user-provided topic summary.
+ */
+export async function generateViralPostAssetsWithGemini(mediaUrl: string, topicSummary: string): Promise<ViralPostAssetsResult> {
+  const apiKey = process.env.GEMINI_API_KEY;
+  if (!apiKey) {
+    throw new Error('GEMINI_API_KEY is not configured in environment variables');
+  }
+
+  const ai = new GoogleGenAI({ apiKey });
+  const tempPath = path.join(os.tmpdir(), `viral-upload-${Date.now()}.mp4`);
+
+  try {
+    // 1. Download media to local temp storage
+    const response = await fetch(mediaUrl);
+    if (!response.ok) {
+      throw new Error(`Failed to fetch media from ${mediaUrl}: ${response.statusText}`);
+    }
+
+    const buffer = Buffer.from(await response.arrayBuffer());
+    fs.writeFileSync(tempPath, buffer);
+  } catch (err) {
+    console.error('Error downloading file:', err);
+    throw new Error('Could not download the file to process.');
+  }
+
+  let fileResult;
+  try {
+    // 2. Upload to Gemini File API
+    fileResult = await ai.files.upload({ file: tempPath });
+
+    // 3. Poll for processing completion
+    let fileHandle = await ai.files.get({ name: fileResult.name! });
+    while (fileHandle.state === 'PROCESSING') {
+      await new Promise((resolve) => setTimeout(resolve, 2000));
+      fileHandle = await ai.files.get({ name: fileResult.name! });
+    }
+
+    if (fileHandle.state === 'FAILED') {
+      throw new Error('Gemini file processing failed.');
+    }
+
+    const prompt = `You are a viral social media strategist. 
+Watch/listen to the provided video/audio clip. The user provided this context summary: "${topicSummary}"
+
+Your task is to generate platform-specific viral metadata for this piece of content.
+
+1. **YouTube Shorts**: Needs a hooky Title (under 60 chars), an engaging Description (2-3 sentences), and relevant Tags.
+2. **TikTok**: Needs a viral caption optimized for the TikTok algorithm with trending hashtags.
+3. **Instagram Reels**: Needs a highly engaging caption formatted for Instagram with emojis and hashtags.
+
+Output strictly as a JSON object matching this schema:
+{
+  "youtube": {
+    "title": "string",
+    "description": "string",
+    "tags": ["string"]
+  },
+  "tiktok": {
+    "caption": "string"
+  },
+  "instagram": {
+    "caption": "string"
+  }
+}`;
+
+    // 4. Generate content
+    const genResponse = await ai.models.generateContent({
+      model: 'gemini-2.5-flash',
+      contents: [
+        {
+          role: 'user',
+          parts: [
+            { text: prompt },
+            { fileData: { fileUri: fileHandle.uri, mimeType: fileHandle.mimeType } },
+          ],
+        },
+      ],
+      config: {
+        responseMimeType: 'application/json',
+      },
+    });
+
+    const resultText = genResponse?.text;
+    const sanitized = resultText ? resultText.replace(/[\x00-\x1F\x7F]/g, (ch) => {
+      if (ch === '\n' || ch === '\r' || ch === '\t') return ch;
+      return '';
+    }) : null;
+    
+    if (!sanitized) throw new Error("Failed to generate content");
+    
+    return JSON.parse(sanitized) as ViralPostAssetsResult;
+
+  } finally {
+    // 5. Cleanup
+    if (fs.existsSync(tempPath)) {
+      fs.unlinkSync(tempPath);
+    }
+
+    if (fileResult?.name) {
+      try {
+        await ai.files.delete({ name: fileResult.name! });
+      } catch (e) {
+        console.warn('Failed to delete Gemini temporary file:', e);
+      }
+    }
+  }
+}

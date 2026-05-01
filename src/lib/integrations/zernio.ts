@@ -2,12 +2,14 @@ import 'server-only';
 import { ZernioPostResponseSchema, type ZernioPostResponse } from '@/lib/validation/zernio';
 
 export type ZernioPostPayload = {
-  content: string;
-  mediaItems: Array<{
+  content?: string;
+  mediaItems?: Array<{
     type: string;
     url: string;
   }>;
   publishNow?: boolean;
+  scheduledFor?: string;
+  queuedFromProfile?: string;
   platforms: Array<{
     platform: string;
     accountId: string;
