@@ -2,7 +2,7 @@ import { NextResponse } from 'next/server';
 import { GoogleGenAI } from '@google/genai';
 import { createClient } from '@/lib/supabase/server';
 
-export const maxDuration = 60; // Extend Vercel timeout for heavy AI image inference
+export const maxDuration = 300; // Extend Vercel timeout for heavy AI image inference (Pro limit is 300s)
 
 export async function POST(req: Request) {
   try {
@@ -60,13 +60,61 @@ export async function POST(req: Request) {
       );
     }
 
+    // SSRF Protection Validations
+    try {
+      const parsedUrl = new URL(baseImageUrl);
+      if (parsedUrl.protocol !== 'https:' && parsedUrl.protocol !== 'http:') {
+        return NextResponse.json({ error: 'Invalid URL protocol' }, { status: 400 });
+      }
+
+      const hostname = parsedUrl.hostname.toLowerCase();
+      const isLocalhost = hostname === 'localhost' || hostname.endsWith('.local') || hostname.endsWith('.internal');
+      
+      const isIPv4 = /^(\d{1,3})\.(\d{1,3})\.(\d{1,3})\.(\d{1,3})$/.exec(hostname);
+      let isPrivateIP = false;
+      if (isIPv4) {
+        const parts = isIPv4.slice(1).map(Number);
+        if (
+          parts[0] === 10 ||
+          (parts[0] === 172 && parts[1] >= 16 && parts[1] <= 31) ||
+          (parts[0] === 192 && parts[1] === 168) ||
+          parts[0] === 127 ||
+          parts[0] === 169 ||
+          parts[0] === 0
+        ) {
+          isPrivateIP = true;
+        }
+      }
+      if (hostname.includes('[::1]') || hostname.includes('[fe80:') || hostname.includes('[fc00:') || hostname.includes('[fd00:')) {
+        isPrivateIP = true;
+      }
+
+      if (isLocalhost || isPrivateIP) {
+        if (process.env.NODE_ENV !== 'development') {
+          return NextResponse.json({ error: 'Local network addresses are restricted' }, { status: 400 });
+        }
+      }
+    } catch (err) {
+      return NextResponse.json({ error: 'Malformed URL' }, { status: 400 });
+    }
+
     // Download the image
-    const imageRes = await fetch(baseImageUrl);
+    const imageRes = await fetch(baseImageUrl, { signal: AbortSignal.timeout(10000) });
     if (!imageRes.ok) {
       return NextResponse.json(
         { error: 'Failed to fetch base image' },
         { status: 500 }
       );
+    }
+
+    const contentType = imageRes.headers.get('content-type') || '';
+    if (!contentType.startsWith('image/')) {
+      return NextResponse.json({ error: 'Invalid content type, expected image' }, { status: 400 });
+    }
+
+    const contentLength = imageRes.headers.get('content-length');
+    if (contentLength && parseInt(contentLength, 10) > 10 * 1024 * 1024) {
+      return NextResponse.json({ error: 'Image too large (max 10MB)' }, { status: 400 });
     }
     
     // Process image to base64
@@ -107,7 +155,10 @@ export async function POST(req: Request) {
                   continue;
                 }
                 
-                const buffer = Buffer.from(base64Data, 'base64');
+                // Vercel's Buffer polyfill uses atob(), which throws "The string did not match the expected pattern" 
+                // if it encounters base64url characters (- and _). We must normalize it to standard base64 first.
+                const normalizedBase64 = base64Data.replace(/-/g, '+').replace(/_/g, '/');
+                const buffer = Buffer.from(normalizedBase64, 'base64');
                 const ext = outputMimeType.split('/')[1] || 'jpg';
                 const fileName = `generated-art/${showId}-${format}-${Date.now()}.${ext}`;
 

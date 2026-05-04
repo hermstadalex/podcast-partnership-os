@@ -18,6 +18,7 @@ import { EpisodeTracker } from './EpisodeTracker';
 import { generateEpisodeAssets, saveEpisodeDraft, getShows } from '@/app/actions';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { useRouter } from 'next/navigation';
+import DOMPurify from 'isomorphic-dompurify';
 
 type WizardStep = 'UPLOAD' | 'GENERATING' | 'REVIEW' | 'PUBLISHING' | 'DONE';
 
@@ -227,7 +228,7 @@ export function EpisodeCreatorWizard({ isOpen, onClose, showId }: { isOpen: bool
                         [&_a]:text-indigo-400 [&_a]:underline
                         [&_strong]:text-zinc-100 [&_strong]:font-semibold
                         [&_b]:text-zinc-100 [&_b]:font-semibold"
-                      dangerouslySetInnerHTML={{ __html: description || '<p class="text-zinc-500 italic">No shownotes generated yet.</p>' }}
+                      dangerouslySetInnerHTML={{ __html: DOMPurify.sanitize(description || '<p class="text-zinc-500 italic">No shownotes generated yet.</p>') }}
                     />
                   </div>
                 </div>

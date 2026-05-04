@@ -79,7 +79,13 @@ export async function POST(request: Request) {
     const signatureHeader = request.headers.get('x-zernio-signature');
     const secret = process.env.ZERNIO_WEBHOOK_SECRET;
 
-    if (secret && signatureHeader) {
+    if (!secret) {
+        if (process.env.NODE_ENV !== 'development') {
+            console.error("[WEBHOOK] ZERNIO_WEBHOOK_SECRET is not configured. Failing closed.");
+            return NextResponse.json({ error: "Internal Server Error" }, { status: 500 });
+        }
+        console.warn("[WEBHOOK] ZERNIO_WEBHOOK_SECRET is missing. Bypassing validation (development mode only).");
+    } else if (signatureHeader) {
         const normalizedSignature = signatureHeader.trim().replace(/^sha256=/i, '');
         const hmac = crypto.createHmac('sha256', secret);
         hmac.update(rawBody);
@@ -97,7 +103,7 @@ export async function POST(request: Request) {
            console.warn("[WEBHOOK] Invalid Zernio Signature detected.");
            return NextResponse.json({ error: "Unauthorized: Invalid Signature" }, { status: 401 });
         }
-    } else if (secret && !signatureHeader) {
+    } else {
         return NextResponse.json({ error: "Unauthorized: Missing Signature" }, { status: 401 });
     }
 

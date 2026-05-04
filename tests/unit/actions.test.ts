@@ -115,6 +115,16 @@ function createQueryBuilder(table: string) {
         };
       }
 
+      if (table === 'zernio_profiles' && state.filters.client_id === 'client-1') {
+        return {
+          data: {
+            id: 'zernio-profile-1',
+            external_profile_id: 'mock-profile-id',
+          },
+          error: null,
+        };
+      }
+
       return { data: null, error: null };
     }),
     single: jest.fn(async () => {
@@ -174,7 +184,7 @@ describe('Action: dispatchEpisodePublish', () => {
     const result = await dispatchEpisodePublish('episode-1');
 
     expect(result).toBe(true);
-    expect(captivateApi.createEpisode).toHaveBeenCalledWith('44b65556-406f-4a16-8bce-4dd25f0a1de8', {
+    expect(captivateApi.createEpisode).toHaveBeenCalledWith('captivate-show-1', {
       title: 'Test Episode',
       shownotes: 'Test Description',
       mediaUrl: 'http://test.com/audio.mp3',

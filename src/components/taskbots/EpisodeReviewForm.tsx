@@ -8,6 +8,7 @@ import { ClipboardCheck, Calendar, Podcast, Video, Loader2, CheckCircle2, AlertC
 import { toast } from 'sonner';
 import { publishEpisodeToCaptivate, updateEpisodeDraft } from '@/app/actions';
 import { useRouter } from 'next/navigation';
+import DOMPurify from 'isomorphic-dompurify';
 
 type PublishStatus = 'Draft' | 'Scheduled' | 'Published';
 
@@ -170,7 +171,7 @@ export function EpisodeReviewForm({
                   [&_a]:text-indigo-400 [&_a]:underline
                   [&_strong]:text-zinc-100 [&_strong]:font-semibold
                   [&_b]:text-zinc-100 [&_b]:font-semibold"
-                dangerouslySetInnerHTML={{ __html: description || '<p class="text-zinc-500 italic">No shownotes available.</p>' }}
+                dangerouslySetInnerHTML={{ __html: DOMPurify.sanitize(description || '<p class="text-zinc-500 italic">No shownotes available.</p>') }}
               />
             </div>
           </div>

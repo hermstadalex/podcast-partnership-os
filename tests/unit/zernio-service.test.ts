@@ -39,6 +39,7 @@ describe('ZernioService', () => {
     const service = new ZernioService();
 
     await service.createPost({
+      profileId: 'mock-profile-id',
       content: 'Episode description',
       mediaItems: [{ type: 'video', url: 'https://example.com/video.mp4' }],
       publishNow: true,

@@ -151,7 +151,13 @@ export function EpisodeArtForm({ shows, initialDraft, autoRun }: { shows: Show[]
           })
         });
 
-        const data = await response.json();
+        const responseText = await response.text();
+        let data;
+        try {
+          data = JSON.parse(responseText);
+        } catch (e) {
+          throw new Error(`Server returned an invalid response (Status ${response.status}). This often means the heavy AI generation timed out.`);
+        }
         if (!response.ok) throw new Error(data.error || `Failed to generate ${targetFormat}`);
 
         if (targetFormat === 'podcast-art') newImages.podcast = data.imageUrl;
