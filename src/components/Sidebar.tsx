@@ -3,7 +3,6 @@
 import Link from 'next/link';
 import { Mic, LayoutDashboard, Users, Settings, AlertTriangle, Paintbrush, FileText, Video, Share2 } from 'lucide-react';
 import { usePathname } from 'next/navigation';
-import { RealtimeAvatarStack } from '@/components/realtime-avatar-stack';
 
 export function Sidebar() {
   const pathname = usePathname();
@@ -62,17 +61,6 @@ export function Sidebar() {
 
           {taskbotItems.map(renderLink)}
         </nav>
-      </div>
-
-      <div className="p-6 border-t border-zinc-800">
-        <div className="mb-4 flex items-center justify-between">
-          <div className="text-xs font-semibold uppercase tracking-wider text-zinc-500">
-            Online Now
-          </div>
-        </div>
-        
-        {/* Supabase UI Realtime Avatar Stack */}
-        <RealtimeAvatarStack roomName="dashboard_online" />
       </div>
     </div>
   );
