@@ -376,7 +376,7 @@ export function ZernioPublishWizard({ shows }: { shows: any[] }) {
               {/* Editor Tabs */}
               <div className="lg:col-span-2 space-y-6">
                 
-                {selectedPlatforms.includes('youtube') && (
+                {selectedPlatforms.includes('youtube') && mediaType !== 'image' && (
                   <div className="space-y-4 p-5 rounded-lg border border-red-900/30 bg-red-900/5">
                     <h3 className="text-lg font-bold flex items-center gap-2 text-red-400">
                       <Video className="w-5 h-5" /> YouTube Shorts Optimization

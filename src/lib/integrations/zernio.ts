@@ -45,14 +45,17 @@ export class ZernioService {
 
     if (!res.ok) {
       let bodyText = '';
+      let errorReason = res.statusText;
       try {
         bodyText = await res.text();
+        const jsonBody = JSON.parse(bodyText);
+        if (jsonBody.error) errorReason = jsonBody.error;
       } catch (e) {
-        bodyText = 'unreadable body';
+        if (!bodyText) bodyText = 'unreadable body';
       }
       console.error(`[ZERNIO ERROR] Status: ${res.status} ${res.statusText}`);
       console.error(`[ZERNIO ERROR] Body: ${bodyText}`);
-      throw new Error(`Zernio API error: ${res.statusText}`);
+      throw new Error(`Zernio API error: ${errorReason}`);
     }
 
     return res.json();
