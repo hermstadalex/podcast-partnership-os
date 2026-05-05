@@ -112,7 +112,7 @@ export function ZernioPublishWizard({ shows }: { shows: any[] }) {
       setMediaType(isImage ? 'image' : 'video');
       
       if (isImage) {
-        setSelectedPlatforms(prev => prev.filter(p => p !== 'youtube' && p !== 'tiktok'));
+        setSelectedPlatforms(prev => prev.filter(p => p !== 'youtube'));
       }
     }
   }, [upload.isSuccess, upload.files, supabase, mediaUrl]);
@@ -280,7 +280,7 @@ export function ZernioPublishWizard({ shows }: { shows: any[] }) {
                     <Label className="text-blue-400">Connected Platforms Found</Label>
                     <div className="flex flex-wrap gap-4 mt-2">
                       {zernioAccounts.map(acc => {
-                        const isDisabled = mediaType === 'image' && (acc.platform === 'youtube' || acc.platform === 'tiktok');
+                        const isDisabled = mediaType === 'image' && acc.platform === 'youtube';
                         return (
                         <div key={acc.id} className="flex items-center gap-2">
                           <input 
