@@ -108,7 +108,12 @@ export function ZernioPublishWizard({ shows }: { shows: any[] }) {
       const file = upload.files[0];
       const { data } = supabase.storage.from('episodes_bucket').getPublicUrl(`shorts/${file.name}`);
       setMediaUrl(data.publicUrl);
-      setMediaType(file.type.startsWith('image/') ? 'image' : 'video');
+      const isImage = file.type.startsWith('image/');
+      setMediaType(isImage ? 'image' : 'video');
+      
+      if (isImage) {
+        setSelectedPlatforms(prev => prev.filter(p => p !== 'youtube' && p !== 'tiktok'));
+      }
     }
   }, [upload.isSuccess, upload.files, supabase, mediaUrl]);
 
@@ -274,23 +279,27 @@ export function ZernioPublishWizard({ shows }: { shows: any[] }) {
                   <div className="space-y-2 border border-blue-900/30 bg-blue-900/10 p-4 rounded-lg">
                     <Label className="text-blue-400">Connected Platforms Found</Label>
                     <div className="flex flex-wrap gap-4 mt-2">
-                      {zernioAccounts.map(acc => (
+                      {zernioAccounts.map(acc => {
+                        const isDisabled = mediaType === 'image' && (acc.platform === 'youtube' || acc.platform === 'tiktok');
+                        return (
                         <div key={acc.id} className="flex items-center gap-2">
                           <input 
                             type="checkbox"
-                            className="h-4 w-4 rounded border-zinc-800 bg-zinc-950 text-blue-600 focus:ring-blue-500"
+                            className="h-4 w-4 rounded border-zinc-800 bg-zinc-950 text-blue-600 focus:ring-blue-500 disabled:opacity-50 disabled:cursor-not-allowed"
                             checked={selectedPlatforms.includes(acc.platform)} 
                             onChange={() => togglePlatform(acc.platform)}
                             id={`plat-${acc.id}`}
+                            disabled={isDisabled}
                           />
-                          <Label htmlFor={`plat-${acc.id}`} className="capitalize flex items-center gap-1 cursor-pointer">
+                          <Label htmlFor={`plat-${acc.id}`} className={`capitalize flex items-center gap-1 ${isDisabled ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer'}`}>
                             {acc.platform === 'youtube' && <Video className="w-3 h-3 text-red-500"/>}
                             {acc.platform === 'instagram' && <Camera className="w-3 h-3 text-pink-500"/>}
                             {acc.platform === 'tiktok' && <Music className="w-3 h-3 text-teal-400"/>}
                             {acc.platform}
+                            {isDisabled && <span className="text-xs text-red-400 ml-1">(Video Only)</span>}
                           </Label>
                         </div>
-                      ))}
+                      )})}
                     </div>
                   </div>
                 )}
