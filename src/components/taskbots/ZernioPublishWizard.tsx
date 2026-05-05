@@ -106,7 +106,8 @@ export function ZernioPublishWizard({ shows }: { shows: any[] }) {
   useEffect(() => {
     if (upload.isSuccess && upload.files.length > 0 && !mediaUrl) {
       const file = upload.files[0];
-      const { data } = supabase.storage.from('episodes_bucket').getPublicUrl(`shorts/${file.name}`);
+      const encodedName = encodeURIComponent(file.name);
+      const { data } = supabase.storage.from('episodes_bucket').getPublicUrl(`shorts/${encodedName}`);
       setMediaUrl(data.publicUrl);
       const isImage = file.type.startsWith('image/');
       setMediaType(isImage ? 'image' : 'video');
@@ -116,6 +117,13 @@ export function ZernioPublishWizard({ shows }: { shows: any[] }) {
       }
     }
   }, [upload.isSuccess, upload.files, supabase, mediaUrl]);
+
+  // Ensure incompatible platforms are removed when Zernio accounts load or mediaType changes
+  useEffect(() => {
+    if (mediaType === 'image') {
+      setSelectedPlatforms(prev => prev.filter(p => p !== 'youtube'));
+    }
+  }, [mediaType, zernioAccounts]);
 
   // Auto-upload when a file is selected
   useEffect(() => {
@@ -174,6 +182,9 @@ export function ZernioPublishWizard({ shows }: { shows: any[] }) {
       const platformsData = [];
 
       for (const platform of selectedPlatforms) {
+        // Defensive check: prevent YouTube from being added for image payloads
+        if (mediaType === 'image' && platform === 'youtube') continue;
+
         const account = zernioAccounts.find(a => a.platform === platform);
         if (!account) continue;
 
