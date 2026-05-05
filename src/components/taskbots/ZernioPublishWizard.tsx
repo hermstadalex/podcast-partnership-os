@@ -106,8 +106,7 @@ export function ZernioPublishWizard({ shows }: { shows: any[] }) {
   useEffect(() => {
     if (upload.isSuccess && upload.files.length > 0 && !mediaUrl) {
       const file = upload.files[0];
-      const encodedName = encodeURIComponent(file.name);
-      const { data } = supabase.storage.from('episodes_bucket').getPublicUrl(`shorts/${encodedName}`);
+      const { data } = supabase.storage.from('episodes_bucket').getPublicUrl(`shorts/${file.name}`);
       setMediaUrl(data.publicUrl);
       const isImage = file.type.startsWith('image/');
       setMediaType(isImage ? 'image' : 'video');
