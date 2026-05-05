@@ -48,8 +48,8 @@ export async function syncZernioAccountsForClient(clientId: string, externalProf
   if (accounts && accounts.length > 0) {
     for (const account of accounts) {
       // Assuming Zernio API returns something like:
-      // { id: 'ext-123', platform: 'youtube', accountName: 'Channel Name', channelTitle: 'Channel Title', ... }
-      const externalAccountId = account.id || account.external_account_id || account.accountId;
+      // { _id: 'ext-123', platform: 'youtube', displayName: 'Channel Name', ... }
+      const externalAccountId = account._id || account.id || account.external_account_id || account.accountId;
       if (!externalAccountId) continue;
 
       const { error: accountError } = await supabase
@@ -59,8 +59,8 @@ export async function syncZernioAccountsForClient(clientId: string, externalProf
             zernio_profile_id: profile.id,
             external_account_id: externalAccountId,
             platform: account.platform || 'unknown',
-            account_name: account.accountName || account.name || null,
-            channel_title: account.channelTitle || account.title || null,
+            account_name: account.displayName || account.accountName || account.name || account.username || null,
+            channel_title: account.displayName || account.channelTitle || account.title || account.username || null,
             raw_payload: account,
             updated_at: new Date().toISOString(),
           },
