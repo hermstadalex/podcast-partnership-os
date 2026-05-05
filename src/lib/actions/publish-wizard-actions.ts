@@ -12,6 +12,7 @@ export type ZernioPublishRequest = {
   title: string;
   caption: string;
   mediaUrl: string;
+  mediaType: 'video' | 'image';
   
   platforms: {
     platform: string;
@@ -31,7 +32,7 @@ export async function createZernioPostAction(req: ZernioPublishRequest) {
     const zernioPayload: ZernioPostPayload & { queuedFromProfile?: string; scheduledFor?: string } = {
       profileId: req.profileId,
       content: req.caption,
-      mediaItems: [{ type: 'video', url: req.mediaUrl }],
+      mediaItems: [{ type: req.mediaType || 'video', url: req.mediaUrl }],
       platforms: req.platforms,
     };
 

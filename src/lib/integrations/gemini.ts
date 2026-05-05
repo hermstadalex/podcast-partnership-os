@@ -245,7 +245,10 @@ export async function generateViralPostAssetsWithGemini(mediaUrl: string, topicS
   }
 
   const ai = new GoogleGenAI({ apiKey });
-  const tempPath = path.join(os.tmpdir(), `viral-upload-${Date.now()}.mp4`);
+  const urlPath = new URL(mediaUrl).pathname;
+  const extMatch = urlPath.match(/\.([a-zA-Z0-9]+)$/);
+  const ext = extMatch ? extMatch[1] : 'mp4';
+  const tempPath = path.join(os.tmpdir(), `viral-upload-${Date.now()}.${ext}`);
 
   try {
     // 1. Download media to local temp storage
@@ -278,7 +281,7 @@ export async function generateViralPostAssetsWithGemini(mediaUrl: string, topicS
     }
 
     const prompt = `You are a viral social media strategist. 
-Watch/listen to the provided video/audio clip. The user provided this context summary: "${topicSummary}"
+Analyze the provided media (video, audio, or image). The user provided this context summary: "${topicSummary}"
 
 Your task is to generate platform-specific viral metadata for this piece of content.
 

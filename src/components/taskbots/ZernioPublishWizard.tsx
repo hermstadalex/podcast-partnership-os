@@ -21,7 +21,8 @@ export function ZernioPublishWizard({ shows }: { shows: any[] }) {
   // Form State
   const [selectedShowId, setSelectedShowId] = useState('');
   const [topicSummary, setTopicSummary] = useState('');
-  const [videoUrl, setVideoUrl] = useState<string | null>(null);
+  const [mediaUrl, setMediaUrl] = useState<string | null>(null);
+  const [mediaType, setMediaType] = useState<'video' | 'image'>('video');
 
   // Platform selection & DB records
   const [zernioProfile, setZernioProfile] = useState<any>(null);
@@ -50,7 +51,7 @@ export function ZernioPublishWizard({ shows }: { shows: any[] }) {
     bucketName: 'episodes_bucket',
     path: 'shorts',
     maxFiles: 1,
-    allowedMimeTypes: ['video/mp4', 'video/quicktime', 'video/webm'],
+    allowedMimeTypes: ['video/mp4', 'video/quicktime', 'video/webm', 'image/jpeg', 'image/png', 'image/webp'],
   });
 
   const supabase = createClient();
@@ -103,12 +104,13 @@ export function ZernioPublishWizard({ shows }: { shows: any[] }) {
 
   // Handle successful upload to set URL
   useEffect(() => {
-    if (upload.isSuccess && upload.files.length > 0 && !videoUrl) {
-      const fileName = upload.files[0].name;
-      const { data } = supabase.storage.from('episodes_bucket').getPublicUrl(`shorts/${fileName}`);
-      setVideoUrl(data.publicUrl);
+    if (upload.isSuccess && upload.files.length > 0 && !mediaUrl) {
+      const file = upload.files[0];
+      const { data } = supabase.storage.from('episodes_bucket').getPublicUrl(`shorts/${file.name}`);
+      setMediaUrl(data.publicUrl);
+      setMediaType(file.type.startsWith('image/') ? 'image' : 'video');
     }
-  }, [upload.isSuccess, upload.files, supabase, videoUrl]);
+  }, [upload.isSuccess, upload.files, supabase, mediaUrl]);
 
   // Auto-upload when a file is selected
   useEffect(() => {
@@ -124,7 +126,7 @@ export function ZernioPublishWizard({ shows }: { shows: any[] }) {
   }, [upload.files, upload.loading, upload.isSuccess, upload.errors, upload.onUpload]);
 
   const handleGenerate = async () => {
-    if (!videoUrl) return toast.error("Please wait for the video to finish uploading.");
+    if (!mediaUrl) return toast.error("Please wait for the media to finish uploading.");
     if (!topicSummary) return toast.error("Please provide a topic summary.");
     if (!selectedShowId) return toast.error("Please select a target show/profile.");
     if (selectedPlatforms.length === 0) return toast.error("Please select at least one destination platform.");
@@ -133,7 +135,7 @@ export function ZernioPublishWizard({ shows }: { shows: any[] }) {
     setStep(2);
 
     try {
-      const res = await generateViralAssetsAction(videoUrl, topicSummary);
+      const res = await generateViralAssetsAction(mediaUrl, topicSummary);
       if (!res.success || !res.data) throw new Error(res.error || 'Failed to generate');
 
       setGeneratedData(res.data);
@@ -197,7 +199,8 @@ export function ZernioPublishWizard({ shows }: { shows: any[] }) {
         profileId: zernioProfile.external_profile_id,
         title: ytTitle || topicSummary,
         caption: globalCaption,
-        mediaUrl: videoUrl!,
+        mediaUrl: mediaUrl!,
+        mediaType,
         platforms: platformsData,
         scheduleMode,
         scheduledAt: scheduleMode === 'schedule' ? scheduledAt : undefined
@@ -247,7 +250,7 @@ export function ZernioPublishWizard({ shows }: { shows: any[] }) {
           <div className="space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-500">
             <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
               <div className="space-y-4">
-                <Label>1. Upload Video Short</Label>
+                <Label>1. Upload Media (Video or Image)</Label>
                 <Dropzone {...upload}>
                   <DropzoneEmptyState />
                   <DropzoneContent />
@@ -295,7 +298,7 @@ export function ZernioPublishWizard({ shows }: { shows: any[] }) {
                 <div className="space-y-2">
                   <Label>3. Provide Context for AI</Label>
                   <Textarea 
-                    placeholder="Briefly describe what this video is about to help the AI generate the perfect viral hook and description..."
+                    placeholder="Briefly describe what this media is about to help the AI generate the perfect viral hook and description..."
                     value={topicSummary}
                     onChange={(e) => setTopicSummary(e.target.value)}
                     className="h-24 bg-zinc-950 border-zinc-800"
@@ -308,16 +311,16 @@ export function ZernioPublishWizard({ shows }: { shows: any[] }) {
               {upload.loading && (
                 <div className="text-sm text-blue-400 mb-3 font-medium flex items-center">
                   <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                  Uploading video... Please wait.
+                  Uploading media... Please wait.
                 </div>
               )}
               <Button 
                 onClick={handleGenerate} 
-                disabled={!videoUrl || !topicSummary || !selectedShowId || selectedPlatforms.length === 0 || upload.loading}
+                disabled={!mediaUrl || !topicSummary || !selectedShowId || selectedPlatforms.length === 0 || upload.loading}
                 className="bg-blue-600 hover:bg-blue-700 text-white"
               >
                 <Wand2 className="w-4 h-4 mr-2" />
-                {upload.loading ? 'Uploading...' : (!videoUrl && upload.files.length > 0) ? 'Waiting for video upload...' : 'Generate Viral Assets'}
+                {upload.loading ? 'Uploading...' : (!mediaUrl && upload.files.length > 0) ? 'Waiting for media upload...' : 'Generate Viral Assets'}
               </Button>
             </div>
           </div>
@@ -328,7 +331,7 @@ export function ZernioPublishWizard({ shows }: { shows: any[] }) {
           <div className="flex flex-col items-center justify-center py-20 space-y-6 animate-in fade-in zoom-in-95 duration-500">
             <Loader2 className="w-12 h-12 text-blue-500 animate-spin" />
             <div className="text-center">
-              <h3 className="text-xl font-bold text-zinc-100">AI is analyzing your video...</h3>
+              <h3 className="text-xl font-bold text-zinc-100">AI is analyzing your media...</h3>
               <p className="text-zinc-400 mt-2">Generating viral titles, descriptions, and tags across your selected platforms.</p>
             </div>
           </div>
@@ -343,7 +346,11 @@ export function ZernioPublishWizard({ shows }: { shows: any[] }) {
               <div className="lg:col-span-1 space-y-4">
                 <Label>Media Preview</Label>
                 <div className="aspect-[9/16] bg-black rounded-lg overflow-hidden border border-zinc-800 relative">
-                  <video src={videoUrl!} controls className="w-full h-full object-cover" />
+                  {mediaType === 'image' ? (
+                    <img src={mediaUrl!} alt="Preview" className="w-full h-full object-contain" />
+                  ) : (
+                    <video src={mediaUrl!} controls className="w-full h-full object-cover" />
+                  )}
                 </div>
               </div>
 
